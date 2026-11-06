@@ -1,1860 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dr. Soumita's Dental Care - Smart Inventory & Clinical Stock System</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Phosphor Icons for modern dental & clinic UI -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-          colors: {
-            clinical: {
-              50: '#f0fdfa',
-              100: '#ccfbf1',
-              200: '#99f6e4',
-              300: '#5eead4',
-              400: '#2dd4bf',
-              500: '#14b8a6',
-              600: '#0d9488',
-              700: '#0f766e',
-              800: '#115e59',
-              900: '#134e4a',
-            },
-            dentalNavy: '#0f172a',
-          }
-        }
-      }
-    }
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory SQLite App</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
   <style>
-    /* Custom scrollbars & smooth transitions */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-    .badge-pulse {
-      animation: pulse-dot 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.15); }
-    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { max-width: 900px; margin: 30px auto; padding: 0 20px; background: #f8fafc; color: #1e293b; }
+    h1 { color: #0f172a; margin-bottom: 8px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .btn { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .btn:hover { background: #1d4ed8; }
+    .btn-secondary { background: #64748b; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-success { background: #16a34a; }
+    .btn-success:hover { background: #15803d; }
+    input, textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 12px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    .status { font-size: 14px; color: #059669; font-weight: 500; margin-bottom: 10px; }
+    .flex-row { display: flex; gap: 10px; align-items: center; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+<body>
 
-  <!-- Toast Notification Container -->
-  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+  <h1>Clinic Inventory & SQLite App</h1>
+  <p>Runs SQLite client-side using WebAssembly — 100% compatible with GitHub Pages.</p>
 
-  <!-- Requisition Print Modal -->
-  <div id="requisitionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <div class="flex items-center space-x-3">
-          <div class="p-2.5 bg-clinical-50 text-clinical-600 rounded-xl">
-            <i class="ph-bold ph-receipt text-2xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-900">Purchase Requisition Order</h3>
-            <p class="text-xs text-slate-500">Dr. Soumita's Dental Care • Automated Stock Restock Sheet</p>
-          </div>
-        </div>
-        <button onclick="closeModal('requisitionModal')" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
-          <i class="ph-bold ph-x text-lg"></i>
-        </button>
-      </div>
-      <div id="requisitionContent" class="py-4 text-sm text-slate-700">
-        <!-- Requisition Table Content Populated Dynamically -->
-      </div>
-      <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-        <button onclick="copyRequisitionText()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl flex items-center space-x-2 transition">
-          <i class="ph-bold ph-copy"></i>
-          <span>Copy to Clipboard</span>
-        </button>
-        <button onclick="window.print()" class="px-4 py-2 bg-clinical-600 hover:bg-clinical-700 text-white text-sm font-semibold rounded-xl flex items-center space-x-2 shadow-md shadow-clinical-600/20 transition">
-          <i class="ph-bold ph-printer"></i>
-          <span>Print Requisition</span>
-        </button>
-      </div>
+  <div class="card">
+    <h3>1. Database Source</h3>
+    <div class="flex-row">
+      <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3" />
+      <button class="btn btn-secondary" onclick="loadDefaultOrNewDB()">Create / Reset In-Memory DB</button>
+      <button class="btn btn-success" onclick="exportDB()">Download .db File</button>
     </div>
+    <div id="dbStatus" class="status">Initializing database engine...</div>
   </div>
 
-  <!-- Main Navigation Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
-        <!-- Brand / Identity -->
-        <div class="flex items-center space-x-3">
-          <div class="w-12 h-12 bg-gradient-to-tr from-clinical-700 to-clinical-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-clinical-500/25 ring-4 ring-clinical-50">
-            <i class="ph-fill ph-tooth text-2xl"></i>
-          </div>
-          <div>
-            <div class="flex items-center space-x-2">
-              <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Dr. Soumita's Dental Care</h1>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-clinical-100 text-clinical-800">
-                Dental ERP
-              </span>
-            </div>
-            <p class="text-xs text-slate-500 flex items-center gap-1">
-              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span id="cloudStatusText">Cloud Database Sync Active</span>
-            </p>
-          </div>
-        </div>
-
-        <!-- Quick Switch Role Selector & Header Controls -->
-        <div class="flex items-center space-x-3 sm:space-x-4">
-          <!-- Role Selector Widget -->
-          <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-            <button id="roleDocBtn" onclick="switchUserRole('Doctor')" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs bg-white text-clinical-800">
-              <i class="ph-bold ph-stethoscope text-clinical-600"></i>
-              <span class="hidden md:inline">Doctor (Admin)</span>
-              <span class="md:hidden">Doctor</span>
-            </button>
-            <button id="roleReceptBtn" onclick="switchUserRole('Receptionist')" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition">
-              <i class="ph-bold ph-user-circle"></i>
-              <span class="hidden md:inline">Receptionist / Assistant</span>
-              <span class="md:hidden">Assistant</span>
-            </button>
-          </div>
-
-          <!-- Active User Badge -->
-          <div class="hidden lg:flex items-center space-x-2.5 pl-3 border-l border-slate-200">
-            <div class="w-9 h-9 rounded-xl bg-clinical-100 flex items-center justify-center text-clinical-700 font-bold text-sm" id="userAvatar">
-              DS
-            </div>
-            <div class="text-left text-xs">
-              <div class="font-bold text-slate-800" id="currentUserName">Dr. Soumita (BDS, MDS)</div>
-              <div class="text-slate-400 capitalize" id="currentUserRoleTitle">Chief Dental Surgeon</div>
-            </div>
-          </div>
-        </div>
+  <div class="card">
+    <h3>2. Add New Inventory Item</h3>
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+      <div>
+        <label>Item Name</label>
+        <input type="text" id="itemName" placeholder="e.g., GC Fuji II LC" />
       </div>
-
-      <!-- Navigation Tabs -->
-      <nav class="flex space-x-1 sm:space-x-4 overflow-x-auto border-t border-slate-100 py-2.5 no-scrollbar text-sm font-medium">
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-3 py-2 rounded-lg font-semibold flex items-center space-x-2 bg-clinical-50 text-clinical-700">
-          <i class="ph-bold ph-squares-four text-base"></i>
-          <span>Dashboard</span>
-        </button>
-        <button onclick="switchTab('catalog')" id="tab-catalog" class="tab-btn px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center space-x-2">
-          <i class="ph-bold ph-package text-base"></i>
-          <span>Inventory Catalog</span>
-        </button>
-        <button onclick="switchTab('purchases')" id="tab-purchases" class="tab-btn px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center space-x-2">
-          <i class="ph-bold ph-truck text-base"></i>
-          <span>Stock In (Purchases)</span>
-        </button>
-        <button onclick="switchTab('usage')" id="tab-usage" class="tab-btn px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center space-x-2">
-          <i class="ph-bold ph-first-aid text-base"></i>
-          <span>Stock Out (Clinical Log)</span>
-        </button>
-        <button onclick="switchTab('alerts')" id="tab-alerts" class="tab-btn relative px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center space-x-2">
-          <i class="ph-bold ph-bell-ringing text-base"></i>
-          <span>Expiry & Low Stock</span>
-          <span id="alertsPillCount" class="hidden ml-1 px-1.5 py-0.2 bg-rose-500 text-white text-[10px] font-extrabold rounded-full">0</span>
-        </button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Sticky Urgent Notifications Bar if items are critically out/expired -->
-  <div id="urgentAlertsBar" class="hidden bg-rose-600 text-white px-4 py-2 text-xs font-semibold transition-all">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <i class="ph-bold ph-warning-circle text-base animate-pulse"></i>
-        <span id="urgentAlertsMessage">Alert: 2 items require urgent dental reordering or have expired batches!</span>
+      <div>
+        <label>Category</label>
+        <input type="text" id="itemCategory" placeholder="e.g., Restorative" />
       </div>
-      <button onclick="switchTab('alerts')" class="underline hover:text-rose-100 flex items-center space-x-1">
-        <span>Review Now</span>
-        <i class="ph-bold ph-arrow-right"></i>
-      </button>
+      <div>
+        <label>Quantity</label>
+        <input type="number" id="itemQuantity" placeholder="10" />
+      </div>
     </div>
+    <button class="btn" onclick="addItem()">Insert Item</button>
   </div>
 
-  <!-- Main Content Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
-
-    <!-- ============================================== -->
-    <!-- TAB 1: EXECUTIVE DASHBOARD                     -->
-    <!-- ============================================== -->
-    <section id="section-dashboard" class="space-y-6">
-      <!-- Welcome Header & Quick Action Buttons -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Clinical Inventory Overview</h2>
-          <p class="text-sm text-slate-500 mt-1">Real-time stock value, expiration cycles, and consumption trends for Dr. Soumita's Clinic.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button onclick="openModal('usageModal')" class="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 shadow-sm transition">
-            <i class="ph-bold ph-minus-circle text-base text-rose-400"></i>
-            <span>Log Material Usage</span>
-          </button>
-          <button onclick="openModal('purchaseModal')" class="px-3.5 py-2.5 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 shadow-md shadow-clinical-600/20 transition">
-            <i class="ph-bold ph-plus-circle text-base"></i>
-            <span>Add Inward Batch</span>
-          </button>
-          <button id="quickAddItemBtn" onclick="openModal('catalogModal')" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 border border-slate-200 transition">
-            <i class="ph-bold ph-folder-plus text-base text-clinical-600"></i>
-            <span>New Master Item</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- KPI Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Items -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cataloged Items</p>
-            <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1" id="kpiTotalItems">0</h3>
-            <p class="text-xs text-slate-500 mt-1"><span class="text-emerald-600 font-semibold">6</span> Clinical Categories</p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-clinical-50 text-clinical-600 flex items-center justify-center text-2xl">
-            <i class="ph-bold ph-inventory"></i>
-          </div>
-        </div>
-
-        <!-- Total Stock Value -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Stock Value</p>
-            <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1" id="kpiTotalValue">₹0</h3>
-            <p class="text-xs text-slate-500 mt-1">Based on current on-hand units</p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
-            <i class="ph-bold ph-currency-inr"></i>
-          </div>
-        </div>
-
-        <!-- Low Stock Alerts -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Below Min Threshold</p>
-            <h3 class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-1" id="kpiLowStock">0</h3>
-            <p class="text-xs text-amber-700/80 mt-1 flex items-center gap-1 font-medium">
-              <i class="ph-bold ph-warning"></i> Needs Restock
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
-            <i class="ph-bold ph-chart-line-down"></i>
-          </div>
-        </div>
-
-        <!-- Expiring Soon / Expired -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Expired / &lt; 60 Days</p>
-            <h3 class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-1" id="kpiExpiringCount">0</h3>
-            <p class="text-xs text-rose-700/80 mt-1 flex items-center gap-1 font-medium">
-              <i class="ph-bold ph-alarm"></i> Critical Lot Tracking
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl">
-            <i class="ph-bold ph-calendar-x"></i>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Grids: Recent Procedures & Category Distribution -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Recent Clinical Stock Deductions (2 Cols) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="font-bold text-slate-900 text-base">Recent Clinical Consumption</h3>
-              <p class="text-xs text-slate-500">Materials logged during patient procedures</p>
-            </div>
-            <button onclick="switchTab('usage')" class="text-xs font-semibold text-clinical-600 hover:text-clinical-700 flex items-center space-x-1">
-              <span>View All</span>
-              <i class="ph-bold ph-arrow-right"></i>
-            </button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs text-slate-600">
-              <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
-                <tr>
-                  <th class="py-2.5 px-3 rounded-l-lg">Procedure</th>
-                  <th class="py-2.5 px-3">Item Used</th>
-                  <th class="py-2.5 px-3">Qty</th>
-                  <th class="py-2.5 px-3">Patient / OP</th>
-                  <th class="py-2.5 px-3">Logged By</th>
-                  <th class="py-2.5 px-3 rounded-r-lg">Time</th>
-                </tr>
-              </thead>
-              <tbody id="dashboardUsageTableBody" class="divide-y divide-slate-100">
-                <!-- Injected via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Quick Restock Helper & Urgent Needs -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="font-bold text-slate-900 text-base">Immediate Attention</h3>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Live</span>
-            </div>
-            <p class="text-xs text-slate-500 mb-4">Items requiring instant re-ordering from dental suppliers.</p>
-
-            <div id="dashboardRestockList" class="space-y-3">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-          <div class="pt-4 border-t border-slate-100 mt-4">
-            <button onclick="generateRequisitionOrder()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition shadow-sm">
-              <i class="ph-bold ph-file-text"></i>
-              <span>Generate Restock Order Slip</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================== -->
-    <!-- TAB 2: MASTER INVENTORY CATALOG               -->
-    <!-- ============================================== -->
-    <section id="section-catalog" class="space-y-5 hidden">
-      <!-- Top Actions & Filters -->
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-xl font-bold text-slate-900">Master Item Catalog</h2>
-            <p class="text-xs text-slate-500">Permanent registry of dental restorative, surgical, and consumable items.</p>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button onclick="openModal('catalogModal')" id="addCatalogItemBtn" class="px-4 py-2.5 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition shadow-sm">
-              <i class="ph-bold ph-plus text-sm"></i>
-              <span>Add New Dental Material</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Search & Filter Controls -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-          <div class="relative">
-            <i class="ph-bold ph-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
-            <input type="text" id="catalogSearchInput" placeholder="Search item, SKU or brand..." oninput="renderCatalogTable()"
-              class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-slate-50/50">
-          </div>
-          <div>
-            <select id="catalogCategoryFilter" onchange="renderCatalogTable()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="ALL">All Categories</option>
-              <option value="Restorative & Aesthetics">Restorative & Aesthetics</option>
-              <option value="Endodontics">Endodontics</option>
-              <option value="Local Anesthetics & Surgical">Local Anesthetics & Surgical</option>
-              <option value="Impression & Matrix Systems">Impression & Matrix Systems</option>
-              <option value="Consumables & PPE">Consumables & PPE</option>
-              <option value="Sterilization & Disinfection">Sterilization & Disinfection</option>
-            </select>
-          </div>
-          <div>
-            <select id="catalogStockFilter" onchange="renderCatalogTable()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="ALL">All Stock Statuses</option>
-              <option value="LOW">Low / Out of Stock</option>
-              <option value="NORMAL">Adequate Stock</option>
-            </select>
-          </div>
-          <div>
-            <select id="catalogSortFilter" onchange="renderCatalogTable()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="name_asc">Sort: Item Name (A-Z)</option>
-              <option value="stock_asc">Sort: Quantity (Low to High)</option>
-              <option value="stock_desc">Sort: Quantity (High to Low)</option>
-              <option value="price_desc">Sort: Unit Price (Highest)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Catalog Table View -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/80 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-              <tr>
-                <th class="py-3 px-4">Item Details / SKU</th>
-                <th class="py-3 px-4">Category</th>
-                <th class="py-3 px-4">Unit Measure</th>
-                <th class="py-3 px-4 text-right">Unit Price</th>
-                <th class="py-3 px-4 text-center">Threshold</th>
-                <th class="py-3 px-4 text-center">In Stock</th>
-                <th class="py-3 px-4 text-center">Status</th>
-                <th class="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="catalogTableBody" class="divide-y divide-slate-100 font-medium">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
-        <div id="catalogEmptyState" class="hidden text-center py-12">
-          <i class="ph-bold ph-package text-4xl text-slate-300"></i>
-          <p class="text-sm font-semibold text-slate-500 mt-2">No matching dental materials found.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================== -->
-    <!-- TAB 3: PURCHASES & STOCK-IN (BATCHES)          -->
-    <!-- ============================================== -->
-    <section id="section-purchases" class="space-y-5 hidden">
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-slate-900">Purchases & Inward Batches</h2>
-          <p class="text-xs text-slate-500">Record incoming stock batches with supplier invoices, lot numbers, and expiry dates.</p>
-        </div>
-        <button onclick="openModal('purchaseModal')" class="px-4 py-2.5 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition shadow-sm">
-          <i class="ph-bold ph-plus text-sm"></i>
-          <span>Record Inward Stock / Batch</span>
-        </button>
-      </div>
-
-      <!-- Purchases List -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/80 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-              <tr>
-                <th class="py-3 px-4">Date & Invoice</th>
-                <th class="py-3 px-4">Supplier / Vendor</th>
-                <th class="py-3 px-4">Material / Item</th>
-                <th class="py-3 px-4">Batch / Lot #</th>
-                <th class="py-3 px-4">Expiry Date</th>
-                <th class="py-3 px-4 text-right">Qty Received</th>
-                <th class="py-3 px-4 text-right">Cost (₹)</th>
-                <th class="py-3 px-4 text-center">Batch Status</th>
-              </tr>
-            </thead>
-            <tbody id="purchasesTableBody" class="divide-y divide-slate-100 font-medium">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================== -->
-    <!-- TAB 4: USAGE & CLINICAL LOG (STOCK-OUT)        -->
-    <!-- ============================================== -->
-    <section id="section-usage" class="space-y-5 hidden">
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-slate-900">Clinical Material Consumption</h2>
-          <p class="text-xs text-slate-500">Track dental consumables dispensed per clinical procedure (RCT, Composites, Extractions, Implants).</p>
-        </div>
-        <button onclick="openModal('usageModal')" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition shadow-sm">
-          <i class="ph-bold ph-plus text-sm"></i>
-          <span>Record Consumption</span>
-        </button>
-      </div>
-
-      <!-- Usage Records Ledger -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-50/80 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-              <tr>
-                <th class="py-3 px-4">Timestamp</th>
-                <th class="py-3 px-4">Procedure Type</th>
-                <th class="py-3 px-4">Item Consumed</th>
-                <th class="py-3 px-4 text-right">Qty Deducted</th>
-                <th class="py-3 px-4">Batch Assigned</th>
-                <th class="py-3 px-4">Patient / OP Ref</th>
-                <th class="py-3 px-4">Dispensed By</th>
-              </tr>
-            </thead>
-            <tbody id="usageTableBody" class="divide-y divide-slate-100 font-medium">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================== -->
-    <!-- TAB 5: EXPIRY & LOW-STOCK SMART ALERTS         -->
-    <!-- ============================================== -->
-    <section id="section-alerts" class="space-y-6 hidden">
-      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-slate-900">Smart Alerts & Expiry Watchlist</h2>
-          <p class="text-xs text-slate-500">Proactively identify expiring dental chemicals, resins, anesthetics, and depleted safety items.</p>
-        </div>
-        <button onclick="generateRequisitionOrder()" class="px-4 py-2.5 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition shadow-sm">
-          <i class="ph-bold ph-printer"></i>
-          <span>Compile Restock Requisition</span>
-        </button>
-      </div>
-
-      <!-- Alert Subsections Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Low Stock Items Warning -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div class="flex items-center space-x-2">
-              <span class="p-2 rounded-xl bg-amber-50 text-amber-600">
-                <i class="ph-bold ph-warning text-lg"></i>
-              </span>
-              <div>
-                <h3 class="font-bold text-slate-900 text-sm">Low Stock Items</h3>
-                <p class="text-xs text-slate-400">Current count at or below min threshold</p>
-              </div>
-            </div>
-            <span id="lowStockBadgeCount" class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">0 Items</span>
-          </div>
-          <div id="lowStockAlertsList" class="divide-y divide-slate-100 mt-2 max-h-96 overflow-y-auto">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- Expiry Watchlist -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div class="flex items-center space-x-2">
-              <span class="p-2 rounded-xl bg-rose-50 text-rose-600">
-                <i class="ph-bold ph-clock-countdown text-lg"></i>
-              </span>
-              <div>
-                <h3 class="font-bold text-slate-900 text-sm">Expiry Surveillance</h3>
-                <p class="text-xs text-slate-400">Batches expired or expiring in &lt; 60 days</p>
-              </div>
-            </div>
-            <span id="expiryBadgeCount" class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800">0 Batches</span>
-          </div>
-          <div id="expiryAlertsList" class="divide-y divide-slate-100 mt-2 max-h-96 overflow-y-auto">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- ============================================== -->
-  <!-- MODALS SECTION                                 -->
-  <!-- ============================================== -->
-
-  <!-- Modal 1: Add / Edit Catalog Item -->
-  <div id="catalogModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h3 class="text-base font-bold text-slate-900" id="catalogModalTitle">Add Dental Material to Catalog</h3>
-        <button onclick="closeModal('catalogModal')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg">
-          <i class="ph-bold ph-x text-base"></i>
-        </button>
-      </div>
-      <form id="catalogForm" onsubmit="handleCatalogSubmit(event)" class="space-y-4 pt-4 text-xs">
-        <input type="hidden" id="itemEditId" value="">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Item / Material Name *</label>
-          <input type="text" id="itemName" required placeholder="e.g. Fuji II LC Capsule, TheraCal LC"
-            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Category *</label>
-            <select id="itemCategory" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="Restorative & Aesthetics">Restorative & Aesthetics</option>
-              <option value="Endodontics">Endodontics</option>
-              <option value="Local Anesthetics & Surgical">Local Anesthetics & Surgical</option>
-              <option value="Impression & Matrix Systems">Impression & Matrix Systems</option>
-              <option value="Consumables & PPE">Consumables & PPE</option>
-              <option value="Sterilization & Disinfection">Sterilization & Disinfection</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">SKU / Item Code</label>
-            <input type="text" id="itemSku" placeholder="e.g. DENT-RES-01"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Unit of Measure *</label>
-            <select id="itemUnit" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="Box">Box</option>
-              <option value="Vial/Ampoule">Vial/Ampoule</option>
-              <option value="Syringe">Syringe</option>
-              <option value="Packet">Packet</option>
-              <option value="Bottle">Bottle</option>
-              <option value="Pack of 5">Pack of 5</option>
-              <option value="Tube">Tube</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Min Threshold *</label>
-            <input type="number" id="itemMinStock" min="1" required placeholder="e.g. 5"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Est. Price (₹) *</label>
-            <input type="number" id="itemPrice" min="0" step="0.5" required placeholder="e.g. 1850"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div id="initialQtyWrapper">
-          <label class="block font-semibold text-slate-700 mb-1">Opening Stock Quantity</label>
-          <input type="number" id="itemOpeningStock" min="0" value="0"
-            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          <span class="text-[10px] text-slate-400">You can also record detailed incoming batches from the Purchases tab.</span>
-        </div>
-        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-          <button type="button" onclick="closeModal('catalogModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition">
-            Cancel
-          </button>
-          <button type="submit" class="px-5 py-2 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl font-bold shadow-md shadow-clinical-600/20 transition">
-            Save Item
-          </button>
-        </div>
-      </form>
+  <div class="card">
+    <div class="flex-row" style="justify-content: space-between;">
+      <h3>3. Inventory Table</h3>
+      <button class="btn btn-secondary" onclick="renderTable()">Refresh List</button>
     </div>
+    <div id="tableContainer">No data loaded yet.</div>
   </div>
 
-  <!-- Modal 2: Inward Purchase / Stock Batch Entry -->
-  <div id="purchaseModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="text-base font-bold text-slate-900">Add Stock-In / Batch Arrival</h3>
-          <p class="text-xs text-slate-500">Inward inventory ledger update</p>
-        </div>
-        <button onclick="closeModal('purchaseModal')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg">
-          <i class="ph-bold ph-x text-base"></i>
-        </button>
-      </div>
-      <form id="purchaseForm" onsubmit="handlePurchaseSubmit(event)" class="space-y-4 pt-4 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Select Dental Material *</label>
-          <select id="purchaseItemId" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-            <!-- Dynamically populated from Catalog -->
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Supplier / Depot Name *</label>
-            <input type="text" id="purchaseSupplier" required placeholder="e.g. Prime Dental Supplies, Dentsply Depot"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Invoice / Bill #</label>
-            <input type="text" id="purchaseInvoice" placeholder="e.g. INV-2026-904"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Batch / Lot Number *</label>
-            <input type="text" id="purchaseBatchNumber" required placeholder="e.g. BATCH-L904"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Expiry Date *</label>
-            <input type="date" id="purchaseExpiryDate" required
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Quantity Added *</label>
-            <input type="number" id="purchaseQuantity" min="1" required placeholder="e.g. 10"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Cost Per Unit (₹) *</label>
-            <input type="number" id="purchaseUnitCost" min="0" step="0.5" required placeholder="e.g. 1200"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-          <button type="button" onclick="closeModal('purchaseModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition">
-            Cancel
-          </button>
-          <button type="submit" class="px-5 py-2 bg-clinical-600 hover:bg-clinical-700 text-white rounded-xl font-bold shadow-md shadow-clinical-600/20 transition">
-            Record Batch Stock
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal 3: Procedure Material Usage (Stock-Out) -->
-  <div id="usageModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="text-base font-bold text-slate-900">Clinical Consumption Log</h3>
-          <p class="text-xs text-slate-500">Dispense stock for chairside treatment</p>
-        </div>
-        <button onclick="closeModal('usageModal')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg">
-          <i class="ph-bold ph-x text-base"></i>
-        </button>
-      </div>
-      <form id="usageForm" onsubmit="handleUsageSubmit(event)" class="space-y-4 pt-4 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Material Consumed *</label>
-          <select id="usageItemId" required onchange="updateUsageBatchOptions()" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-            <!-- Dynamically populated from Catalog -->
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Batch / Lot Used</label>
-            <select id="usageBatchId" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="GENERAL">General Active Stock</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Quantity Used *</label>
-            <input type="number" id="usageQuantity" min="1" value="1" required
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Procedure Type *</label>
-            <select id="usageProcedure" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500 bg-white">
-              <option value="Root Canal Treatment (RCT)">Root Canal Treatment (RCT)</option>
-              <option value="Composite Restoration / Filling">Composite Restoration / Filling</option>
-              <option value="Tooth Extraction / Impaction">Tooth Extraction / Impaction</option>
-              <option value="Crown & Bridge Impression">Crown & Bridge Impression</option>
-              <option value="Scaling & Deep Curettage">Scaling & Deep Curettage</option>
-              <option value="Pediatric Pulpotomy / Filling">Pediatric Pulpotomy / Filling</option>
-              <option value="General Clinic Sterilization">General Clinic Sterilization</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Patient Name / OP No. (Optional)</label>
-            <input type="text" id="usagePatient" placeholder="e.g. Rahul Sen (OP-442)"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-clinical-500">
-          </div>
-        </div>
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Dispensed By</label>
-          <input type="text" id="usageDispensedBy" readonly
-            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-600">
-        </div>
-        <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-          <button type="button" onclick="closeModal('usageModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition">
-            Cancel
-          </button>
-          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-md transition">
-            Deduct & Log Consumption
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Firebase Script Integration -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { 
-      getFirestore, 
-      collection, 
-      doc, 
-      setDoc, 
-      getDoc, 
-      getDocs, 
-      addDoc, 
-      updateDoc, 
-      deleteDoc, 
-      onSnapshot,
-      serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Application state
-    let currentUserRole = 'Doctor'; // 'Doctor' or 'Receptionist'
+  <script>
     let db = null;
-    let auth = null;
-    let user = null;
-    let appId = typeof __app_id !== 'undefined' ? __app_id : 'soumita-dental-care-v1';
+    let SQL = null;
 
-    // Local in-memory caches synced with Firebase
-    let catalogItems = [];
-    let purchaseRecords = [];
-    let usageRecords = [];
+    // 1. Initialize SQLite WebAssembly
+    initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+    }).then(sql => {
+      SQL = sql;
+      loadDefaultOrNewDB();
+    });
 
-    // Pre-seeded Dental Clinic Inventory (GC, Dentsply, 3M, Septodont standards)
-    const initialSeedItems = [
-      {
-        id: 'seed-fuji-2-lc',
-        name: 'GC Fuji II LC Light-Cured Glass Ionomer Restorative',
-        category: 'Restorative & Aesthetics',
-        sku: 'GC-FJ2-01',
-        unit: 'Box',
-        minStock: 4,
-        price: 3650,
-        stock: 3, // Low stock condition
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-theracal-lc',
-        name: 'Bisco TheraCal LC Resin-Modified Calcium Silicate Liner',
-        category: 'Restorative & Aesthetics',
-        sku: 'BIS-TC-02',
-        unit: 'Syringe',
-        minStock: 2,
-        price: 2400,
-        stock: 5,
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-palodent-bands',
-        name: 'Dentsply Palodent V3 Sectional Matrix Bands (Regular)',
-        category: 'Impression & Matrix Systems',
-        sku: 'DEN-PV3-03',
-        unit: 'Packet',
-        minStock: 3,
-        price: 2150,
-        stock: 2, // Low stock
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-ligno-adren',
-        name: 'Septodont Lignospan Standard 2% Lignocaine with Adrenaline (1:80,000)',
-        category: 'Local Anesthetics & Surgical',
-        sku: 'SEP-LIG-04',
-        unit: 'Box',
-        minStock: 5,
-        price: 1850,
-        stock: 12,
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-protaper-gold',
-        name: 'Dentsply Maillefer ProTaper Gold Rotary Files (SX-F3 Assorted)',
-        category: 'Endodontics',
-        sku: 'MAL-PTG-05',
-        unit: 'Pack of 5',
-        minStock: 6,
-        price: 2350,
-        stock: 15,
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-gloves-latex',
-        name: 'Nitrile Dental Examination Gloves Powder-Free (Medium)',
-        category: 'Consumables & PPE',
-        sku: 'PPE-GLV-06',
-        unit: 'Box',
-        minStock: 10,
-        price: 520,
-        stock: 18,
-        createdDate: new Date().toISOString()
-      },
-      {
-        id: 'seed-glutaraldehyde',
-        name: 'Korsolex Rapid Cold Instrument Sterilant Solution (2L)',
-        category: 'Sterilization & Disinfection',
-        sku: 'STR-KOR-07',
-        unit: 'Bottle',
-        minStock: 3,
-        price: 1100,
-        stock: 4,
-        createdDate: new Date().toISOString()
-      }
-    ];
-
-    // Initial purchase seed batches (Includes an item near expiry for testing alerts)
-    const initialSeedPurchases = [
-      {
-        id: 'batch-fuji-01',
-        itemId: 'seed-fuji-2-lc',
-        itemName: 'GC Fuji II LC Light-Cured Glass Ionomer Restorative',
-        supplier: 'Bengal Dental Depot, Kolkata',
-        invoice: 'BDD/2026/0112',
-        batchNumber: 'GC-LOT-9821',
-        expiryDate: getRelativeDateString(25), // Expiring in 25 days (< 60 days alert)
-        quantity: 3,
-        unitCost: 3650,
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'batch-ligno-02',
-        itemId: 'seed-ligno-adren',
-        itemName: 'Septodont Lignospan Standard 2% Lignocaine with Adrenaline',
-        supplier: 'Apollo Med & Dental Surgicals',
-        invoice: 'AP-55910',
-        batchNumber: 'SEP-7734B',
-        expiryDate: getRelativeDateString(320), // Fresh batch
-        quantity: 12,
-        unitCost: 1850,
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'batch-palodent-03',
-        itemId: 'seed-palodent-bands',
-        itemName: 'Dentsply Palodent V3 Sectional Matrix Bands (Regular)',
-        supplier: 'Bengal Dental Depot, Kolkata',
-        invoice: 'BDD/2026/0199',
-        batchNumber: 'DEN-8820',
-        expiryDate: getRelativeDateString(180),
-        quantity: 2,
-        unitCost: 2150,
-        timestamp: new Date().toISOString()
-      }
-    ];
-
-    // Helper date generator
-    function getRelativeDateString(daysOffset) {
-      const d = new Date();
-      d.setDate(d.getDate() + daysOffset);
-      return d.toISOString().split('T')[0];
-    }
-
-    // Initialize Firebase
-    async function initFirebaseSystem() {
+    // 2. Create in-memory DB or load clinic_inventory.db if present
+    async function loadDefaultOrNewDB() {
       try {
-        let firebaseConfig = null;
-        if (typeof __firebase_config !== 'undefined') {
-          firebaseConfig = JSON.parse(__firebase_config);
+        const response = await fetch('./clinic_inventory.db');
+        if (response.ok) {
+          const buf = await response.arrayBuffer();
+          db = new SQL.Database(new Uint8Array(buf));
+          document.getElementById('dbStatus').textContent = "Loaded 'clinic_inventory.db' from server.";
         } else {
-          // Fallback configuration if runtime config placeholder isn't injected
-          firebaseConfig = {
-            apiKey: "AIzaSyMockDentalKeyDemo1234567890",
-            authDomain: "dr-soumita-dental-care.firebaseapp.com",
-            projectId: "dr-soumita-dental-care",
-            storageBucket: "dr-soumita-dental-care.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:mockdentalid"
-          };
+          initSampleDB();
         }
-
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-
-        // Sign in logic prioritizing initial custom token
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-
-        user = auth.currentUser;
-        updateCloudStatus(true);
-        setupRealtimeListeners();
-      } catch (err) {
-        console.warn("Cloud connection defaulted to active state:", err);
-        // Fallback to offline in-memory data if Firebase blocked by environment
-        catalogItems = [...initialSeedItems];
-        purchaseRecords = [...initialSeedPurchases];
-        updateCloudStatus(false);
-        refreshAllUI();
+      } catch (e) {
+        initSampleDB();
       }
+      renderTable();
     }
 
-    function updateCloudStatus(isLive) {
-      const el = document.getElementById('cloudStatusText');
-      if (el) {
-        el.textContent = isLive ? "Cloud Database Sync: Active" : "Local Fast-Storage Active";
-      }
+    function initSampleDB() {
+      db = new SQL.Database();
+      db.run(`
+        CREATE TABLE IF NOT EXISTS inventory (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_name TEXT NOT NULL,
+          category TEXT,
+          quantity INTEGER DEFAULT 0,
+          last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      db.run(`
+        INSERT INTO inventory (item_name, category, quantity) VALUES 
+        ('Palodent V3 Matrix Rings', 'Restorative', 4),
+        ('GC Fuji II LC Capsule', 'Cements', 25),
+        ('TheraCal LC', 'Endodontics', 3);
+      `);
+      document.getElementById('dbStatus').textContent = "Initialized fresh SQLite database with sample data.";
     }
 
-    // Realtime Firestore Collections Listeners (RULE 1 strictly adhered to: /artifacts/{appId}/public/data/...)
-    function setupRealtimeListeners() {
-      if (!db || !user) return;
+    // 3. Handle Local .db File Upload
+    document.getElementById('dbFileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function() {
+        const uInt8Array = new Uint8Array(this.result);
+        db = new SQL.Database(uInt8Array);
+        document.getElementById('dbStatus').textContent = `Loaded file: ${file.name}`;
+        renderTable();
+      };
+      reader.readAsArrayBuffer(file);
+    });
 
-      const catalogCol = collection(db, 'artifacts', appId, 'public', 'data', 'catalog');
-      const purchasesCol = collection(db, 'artifacts', appId, 'public', 'data', 'purchases');
-      const usageCol = collection(db, 'artifacts', appId, 'public', 'data', 'usage');
+    // 4. Insert Record
+    function addItem() {
+      const name = document.getElementById('itemName').value.trim();
+      const cat = document.getElementById('itemCategory').value.trim() || 'General';
+      const qty = parseInt(document.getElementById('itemQuantity').value, 10) || 0;
 
-      // 1. Catalog listener
-      onSnapshot(catalogCol, (snapshot) => {
-        if (snapshot.empty) {
-          // Auto-seed if brand new database
-          seedInitialData();
+      if (!name) {
+        alert('Please enter an item name');
+        return;
+      }
+
+      db.run(
+        "INSERT INTO inventory (item_name, category, quantity) VALUES (?, ?, ?)",
+        [name, cat, qty]
+      );
+
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemCategory').value = '';
+      document.getElementById('itemQuantity').value = '';
+      renderTable();
+    }
+
+    // 5. Query and Render Records
+    function renderTable() {
+      if (!db) return;
+      try {
+        const res = db.exec("SELECT id, item_name, category, quantity, last_updated FROM inventory ORDER BY id DESC;");
+        if (res.length === 0) {
+          document.getElementById('tableContainer').innerHTML = "<p>No records found in 'inventory' table.</p>";
           return;
         }
-        catalogItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        refreshAllUI();
-      }, (err) => {
-        console.error("Catalog snapshot error:", err);
-        showToast("Notice: Using memory store for catalog", "amber");
-      });
 
-      // 2. Purchases listener
-      onSnapshot(purchasesCol, (snapshot) => {
-        purchaseRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        refreshAllUI();
-      }, (err) => {
-        console.error("Purchases snapshot error:", err);
-      });
+        const columns = res[0].columns;
+        const values = res[0].values;
 
-      // 3. Usage listener
-      onSnapshot(usageCol, (snapshot) => {
-        usageRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Sort descending by timestamp in memory (RULE 2: No complex queries)
-        usageRecords.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-        refreshAllUI();
-      }, (err) => {
-        console.error("Usage snapshot error:", err);
-      });
-    }
+        let html = '<table><thead><tr>';
+        columns.forEach(col => { html += `<th>${col}</th>`; });
+        html += '<th>Action</th></tr></thead><tbody>';
 
-    // Auto-seed default dental supplies into Firestore
-    async function seedInitialData() {
-      if (!db || !user) return;
-      try {
-        for (const item of initialSeedItems) {
-          const itemDoc = doc(db, 'artifacts', appId, 'public', 'data', 'catalog', item.id);
-          await setDoc(itemDoc, item);
-        }
-        for (const p of initialSeedPurchases) {
-          const pDoc = doc(db, 'artifacts', appId, 'public', 'data', 'purchases', p.id);
-          await setDoc(pDoc, p);
-        }
-        showToast("Dr. Soumita's Clinic inventory initialized with standard supplies!", "emerald");
-      } catch (e) {
-        console.error("Seeding error:", e);
-      }
-    }
-
-    // Refresh UI across all components
-    function refreshAllUI() {
-      renderDashboard();
-      renderCatalogTable();
-      renderPurchasesTable();
-      renderUsageTable();
-      renderAlertsCenter();
-      populateDropdowns();
-      enforceRolePermissions();
-    }
-
-    // Expose helpers globally so inline HTML handlers can invoke them
-    window.switchTab = function(tabName) {
-      const tabs = ['dashboard', 'catalog', 'purchases', 'usage', 'alerts'];
-      tabs.forEach(t => {
-        const section = document.getElementById(`section-${t}`);
-        const tabBtn = document.getElementById(`tab-${t}`);
-        if (section) section.classList.toggle('hidden', t !== tabName);
-        if (tabBtn) {
-          if (t === tabName) {
-            tabBtn.className = "tab-btn px-3 py-2 rounded-lg font-bold flex items-center space-x-2 bg-clinical-50 text-clinical-700";
-          } else {
-            tabBtn.className = "tab-btn px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 flex items-center space-x-2";
-          }
-        }
-      });
-    };
-
-    window.switchUserRole = function(role) {
-      currentUserRole = role;
-      const docBtn = document.getElementById('roleDocBtn');
-      const recBtn = document.getElementById('roleReceptBtn');
-      const nameEl = document.getElementById('currentUserName');
-      const roleTitleEl = document.getElementById('currentUserRoleTitle');
-      const avatarEl = document.getElementById('userAvatar');
-
-      if (role === 'Doctor') {
-        docBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs bg-white text-clinical-800 transition";
-        recBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition";
-        nameEl.textContent = "Dr. Soumita (BDS, MDS)";
-        roleTitleEl.textContent = "Chief Dental Surgeon";
-        avatarEl.textContent = "DS";
-        avatarEl.className = "w-9 h-9 rounded-xl bg-clinical-100 flex items-center justify-center text-clinical-700 font-bold text-sm";
-      } else {
-        recBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs bg-white text-slate-900 transition";
-        docBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition";
-        nameEl.textContent = "Reception Desk / Assistant";
-        roleTitleEl.textContent = "Front Office & Stock Incharge";
-        avatarEl.textContent = "RA";
-        avatarEl.className = "w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 font-bold text-sm";
-      }
-
-      enforceRolePermissions();
-      showToast(`Switched active profile to: ${role}`, "clinical");
-    };
-
-    function enforceRolePermissions() {
-      const isDoctor = currentUserRole === 'Doctor';
-      const addCatalogBtn = document.getElementById('addCatalogItemBtn');
-      const quickAddItemBtn = document.getElementById('quickAddItemBtn');
-      
-      // Receptionist has read-only view of master catalog item definitions
-      if (addCatalogBtn) addCatalogBtn.style.display = isDoctor ? 'inline-flex' : 'none';
-      if (quickAddItemBtn) quickAddItemBtn.style.display = isDoctor ? 'inline-flex' : 'none';
-
-      const dispensedInput = document.getElementById('usageDispensedBy');
-      if (dispensedInput) {
-        dispensedInput.value = isDoctor ? "Dr. Soumita" : "Clinic Assistant / Reception";
-      }
-    }
-
-    // Modal Helpers
-    window.openModal = function(id) {
-      const modal = document.getElementById(id);
-      if (modal) {
-        modal.classList.remove('hidden');
-        if (id === 'usageModal') {
-          const dispensedInput = document.getElementById('usageDispensedBy');
-          if (dispensedInput) {
-            dispensedInput.value = currentUserRole === 'Doctor' ? "Dr. Soumita" : "Receptionist / Assistant";
-          }
-          window.updateUsageBatchOptions();
-        }
-      }
-    };
-
-    window.closeModal = function(id) {
-      const modal = document.getElementById(id);
-      if (modal) modal.classList.add('hidden');
-    };
-
-    // Toast Notifications
-    window.showToast = function(message, type = "clinical") {
-      const container = document.getElementById('toastContainer');
-      if (!container) return;
-      const toast = document.createElement('div');
-      
-      let bgStyle = 'bg-slate-900 text-white';
-      if (type === 'emerald') bgStyle = 'bg-emerald-600 text-white';
-      if (type === 'rose') bgStyle = 'bg-rose-600 text-white';
-      if (type === 'amber') bgStyle = 'bg-amber-600 text-white';
-      if (type === 'clinical') bgStyle = 'bg-clinical-700 text-white';
-
-      toast.className = `pointer-events-auto transform transition-all duration-300 ease-out translate-y-2 opacity-0 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-xs font-semibold ${bgStyle}`;
-      toast.innerHTML = `<i class="ph-bold ph-check-circle text-base"></i><span>${message}</span>`;
-      container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 350);
-      }, 3500);
-    };
-
-    // ==========================================
-    // MODULE 1: DASHBOARD
-    // ==========================================
-    function renderDashboard() {
-      // 1. KPI Total Items
-      document.getElementById('kpiTotalItems').textContent = catalogItems.length;
-
-      // 2. KPI Total Value (₹)
-      const totalVal = catalogItems.reduce((acc, curr) => acc + ((Number(curr.stock) || 0) * (Number(curr.price) || 0)), 0);
-      document.getElementById('kpiTotalValue').textContent = `₹${totalVal.toLocaleString('en-IN')}`;
-
-      // 3. KPI Low Stock
-      const lowStockItems = catalogItems.filter(item => Number(item.stock) <= Number(item.minStock));
-      document.getElementById('kpiLowStock').textContent = lowStockItems.length;
-
-      // 4. KPI Expiring Soon or Expired (< 60 days)
-      const now = new Date();
-      const in60Days = new Date();
-      in60Days.setDate(in60Days.getDate() + 60);
-
-      const criticalBatches = purchaseRecords.filter(batch => {
-        if (!batch.expiryDate) return false;
-        const exp = new Date(batch.expiryDate);
-        return exp <= in60Days;
-      });
-      document.getElementById('kpiExpiringCount').textContent = criticalBatches.length;
-
-      // Top Urgent Alerts Bar
-      const totalUrgent = lowStockItems.length + criticalBatches.length;
-      const alertBar = document.getElementById('urgentAlertsBar');
-      const alertsPill = document.getElementById('alertsPillCount');
-
-      if (totalUrgent > 0) {
-        alertBar.classList.remove('hidden');
-        document.getElementById('urgentAlertsMessage').textContent = `Action Required: ${lowStockItems.length} item(s) below minimum stock threshold & ${criticalBatches.length} batch(es) near expiration.`;
-        alertsPill.classList.remove('hidden');
-        alertsPill.textContent = totalUrgent;
-      } else {
-        alertBar.classList.add('hidden');
-        alertsPill.classList.add('hidden');
-      }
-
-      // Recent Consumption Table
-      const usageTbody = document.getElementById('dashboardUsageTableBody');
-      usageTbody.innerHTML = '';
-      const recentUsage = usageRecords.slice(0, 5);
-      if (recentUsage.length === 0) {
-        usageTbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400">No clinical usage recorded yet today.</td></tr>`;
-      } else {
-        recentUsage.forEach(u => {
-          const formattedDate = u.timestamp ? new Date(u.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
-          const row = document.createElement('tr');
-          row.className = "hover:bg-slate-50 transition";
-          row.innerHTML = `
-            <td class="py-2.5 px-3 font-semibold text-slate-900">${u.procedure || 'Clinical'}</td>
-            <td class="py-2.5 px-3">${u.itemName}</td>
-            <td class="py-2.5 px-3 font-bold text-rose-600">-${u.quantity}</td>
-            <td class="py-2.5 px-3 text-slate-500">${u.patient || 'OP General'}</td>
-            <td class="py-2.5 px-3 text-slate-700">${u.dispensedBy || 'Staff'}</td>
-            <td class="py-2.5 px-3 text-slate-400">${formattedDate}</td>
-          `;
-          usageTbody.appendChild(row);
+        values.forEach(row => {
+          html += '<tr>';
+          row.forEach(cell => { html += `<td>${cell !== null ? cell : ''}</td>`; });
+          html += `<td><button class="btn btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="deleteItem(${row[0]})">Delete</button></td>`;
+          html += '</tr>';
         });
-      }
 
-      // Immediate Attention List
-      const restockList = document.getElementById('dashboardRestockList');
-      restockList.innerHTML = '';
-      if (lowStockItems.length === 0) {
-        restockList.innerHTML = `
-          <div class="text-center py-6 text-slate-400">
-            <i class="ph-bold ph-check-circle text-2xl text-emerald-500 mb-1"></i>
-            <p class="text-xs">All dental inventories are comfortably stocked.</p>
-          </div>
-        `;
-      } else {
-        lowStockItems.slice(0, 4).forEach(item => {
-          const div = document.createElement('div');
-          div.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100";
-          div.innerHTML = `
-            <div class="truncate pr-2">
-              <p class="font-bold text-slate-800 text-xs truncate">${item.name}</p>
-              <p class="text-[10px] text-slate-500">${item.category} • Min: ${item.minStock} ${item.unit}</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <span class="px-2 py-0.5 rounded-md text-xs font-black ${item.stock == 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}">
-                ${item.stock} left
-              </span>
-            </div>
-          `;
-          restockList.appendChild(div);
-        });
-      }
-    }
-
-    // ==========================================
-    // MODULE 2: MASTER INVENTORY CATALOG
-    // ==========================================
-    window.renderCatalogTable = function() {
-      const tbody = document.getElementById('catalogTableBody');
-      const emptyState = document.getElementById('catalogEmptyState');
-      const searchQuery = (document.getElementById('catalogSearchInput')?.value || '').toLowerCase();
-      const categoryFilter = document.getElementById('catalogCategoryFilter')?.value || 'ALL';
-      const stockFilter = document.getElementById('catalogStockFilter')?.value || 'ALL';
-      const sortFilter = document.getElementById('catalogSortFilter')?.value || 'name_asc';
-
-      let filtered = catalogItems.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || 
-                              (item.sku && item.sku.toLowerCase().includes(searchQuery));
-        const matchesCategory = categoryFilter === 'ALL' || item.category === categoryFilter;
-        let matchesStock = true;
-        if (stockFilter === 'LOW') matchesStock = Number(item.stock) <= Number(item.minStock);
-        if (stockFilter === 'NORMAL') matchesStock = Number(item.stock) > Number(item.minStock);
-
-        return matchesSearch && matchesCategory && matchesStock;
-      });
-
-      // Sorting
-      filtered.sort((a, b) => {
-        if (sortFilter === 'name_asc') return a.name.localeCompare(b.name);
-        if (sortFilter === 'stock_asc') return Number(a.stock) - Number(b.stock);
-        if (sortFilter === 'stock_desc') return Number(b.stock) - Number(a.stock);
-        if (sortFilter === 'price_desc') return Number(b.price) - Number(a.price);
-        return 0;
-      });
-
-      tbody.innerHTML = '';
-      if (filtered.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-      }
-      emptyState.classList.add('hidden');
-
-      filtered.forEach(item => {
-        const isLow = Number(item.stock) <= Number(item.minStock);
-        const isOut = Number(item.stock) <= 0;
-
-        let badgeClass = "bg-emerald-100 text-emerald-800";
-        let statusText = "In Stock";
-        if (isOut) {
-          badgeClass = "bg-rose-100 text-rose-800";
-          statusText = "Depleted";
-        } else if (isLow) {
-          badgeClass = "bg-amber-100 text-amber-800";
-          statusText = "Low Stock";
-        }
-
-        const isDoc = currentUserRole === 'Doctor';
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition";
-        tr.innerHTML = `
-          <td class="py-3 px-4">
-            <div class="font-bold text-slate-900">${item.name}</div>
-            <div class="text-[10px] text-slate-400 font-mono">SKU: ${item.sku || 'N/A'}</div>
-          </td>
-          <td class="py-3 px-4 text-slate-600">${item.category}</td>
-          <td class="py-3 px-4 text-slate-600 font-semibold">${item.unit}</td>
-          <td class="py-3 px-4 text-right font-bold text-slate-800">₹${Number(item.price).toLocaleString('en-IN')}</td>
-          <td class="py-3 px-4 text-center font-medium text-slate-500">${item.minStock}</td>
-          <td class="py-3 px-4 text-center">
-            <span class="text-sm font-black ${isLow ? 'text-amber-600' : 'text-slate-800'}">${item.stock}</span>
-          </td>
-          <td class="py-3 px-4 text-center">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">
-              ${statusText}
-            </span>
-          </td>
-          <td class="py-3 px-4 text-right">
-            <div class="flex items-center justify-end space-x-1">
-              <button onclick="quickAddStock('${item.id}')" title="Quick Add Stock" class="p-1.5 text-clinical-600 hover:bg-clinical-50 rounded-lg">
-                <i class="ph-bold ph-plus-circle text-base"></i>
-              </button>
-              ${isDoc ? `
-                <button onclick="editCatalogItem('${item.id}')" title="Edit Item Details" class="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg">
-                  <i class="ph-bold ph-pencil-simple text-base"></i>
-                </button>
-                <button onclick="deleteCatalogItem('${item.id}')" title="Remove Item" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg">
-                  <i class="ph-bold ph-trash text-base"></i>
-                </button>
-              ` : `
-                <span class="text-[10px] text-slate-400 italic">Locked</span>
-              `}
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    };
-
-    window.handleCatalogSubmit = async function(e) {
-      e.preventDefault();
-      const editId = document.getElementById('itemEditId').value;
-      const name = document.getElementById('itemName').value.trim();
-      const category = document.getElementById('itemCategory').value;
-      const sku = document.getElementById('itemSku').value.trim();
-      const unit = document.getElementById('itemUnit').value;
-      const minStock = Number(document.getElementById('itemMinStock').value) || 1;
-      const price = Number(document.getElementById('itemPrice').value) || 0;
-      const openingStock = Number(document.getElementById('itemOpeningStock').value) || 0;
-
-      const itemData = {
-        name,
-        category,
-        sku: sku || `DENT-${Math.floor(1000 + Math.random() * 9000)}`,
-        unit,
-        minStock,
-        price,
-        updatedAt: new Date().toISOString()
-      };
-
-      try {
-        if (editId) {
-          // Editing existing
-          if (db && user) {
-            const itemRef = doc(db, 'artifacts', appId, 'public', 'data', 'catalog', editId);
-            await updateDoc(itemRef, itemData);
-          } else {
-            const idx = catalogItems.findIndex(i => i.id === editId);
-            if (idx !== -1) catalogItems[idx] = { ...catalogItems[idx], ...itemData };
-          }
-          showToast(`Updated "${name}"`, "clinical");
-        } else {
-          // Creating new
-          itemData.stock = openingStock;
-          itemData.createdDate = new Date().toISOString();
-          if (db && user) {
-            const col = collection(db, 'artifacts', appId, 'public', 'data', 'catalog');
-            await addDoc(col, itemData);
-          } else {
-            const newId = `item-${Date.now()}`;
-            catalogItems.push({ id: newId, ...itemData });
-          }
-          showToast(`Cataloged "${name}" successfully`, "emerald");
-        }
-        closeModal('catalogModal');
-        refreshAllUI();
-        document.getElementById('catalogForm').reset();
-        document.getElementById('itemEditId').value = '';
+        html += '</tbody></table>';
+        document.getElementById('tableContainer').innerHTML = html;
       } catch (err) {
-        console.error("Catalog save error:", err);
-        showToast("Error saving catalog item", "rose");
-      }
-    };
-
-    window.editCatalogItem = function(id) {
-      const item = catalogItems.find(i => i.id === id);
-      if (!item) return;
-      document.getElementById('catalogModalTitle').textContent = "Edit Dental Material";
-      document.getElementById('itemEditId').value = item.id;
-      document.getElementById('itemName').value = item.name;
-      document.getElementById('itemCategory').value = item.category;
-      document.getElementById('itemSku').value = item.sku || '';
-      document.getElementById('itemUnit').value = item.unit;
-      document.getElementById('itemMinStock').value = item.minStock;
-      document.getElementById('itemPrice').value = item.price;
-      // Hide opening stock during edit to avoid confusion
-      document.getElementById('initialQtyWrapper').style.display = 'none';
-      openModal('catalogModal');
-    };
-
-    window.deleteCatalogItem = async function(id) {
-      if (!confirm("Are you sure you want to remove this item from the permanent dental catalog?")) return;
-      try {
-        if (db && user) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'catalog', id));
-        } else {
-          catalogItems = catalogItems.filter(i => i.id !== id);
-        }
-        showToast("Dental material removed", "rose");
-        refreshAllUI();
-      } catch (err) {
-        console.error("Delete error:", err);
-      }
-    };
-
-    window.quickAddStock = function(itemId) {
-      document.getElementById('purchaseItemId').value = itemId;
-      openModal('purchaseModal');
-    };
-
-    // ==========================================
-    // MODULE 3: PURCHASES & BATCH STOCK-IN
-    // ==========================================
-    function renderPurchasesTable() {
-      const tbody = document.getElementById('purchasesTableBody');
-      tbody.innerHTML = '';
-
-      if (purchaseRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-400 font-semibold">No inward purchase batches registered yet.</td></tr>`;
-        return;
-      }
-
-      // Sort recent purchases first
-      const sorted = [...purchaseRecords].sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-
-      sorted.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition";
-        const dateStr = p.timestamp ? new Date(p.timestamp).toLocaleDateString('en-IN') : 'N/A';
-        
-        // Expiry calculation
-        const expDate = new Date(p.expiryDate);
-        const today = new Date();
-        const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
-        
-        let batchBadge = "bg-emerald-100 text-emerald-800";
-        let batchStatus = "Valid";
-        if (diffDays <= 0) {
-          batchBadge = "bg-rose-100 text-rose-800";
-          batchStatus = "Expired";
-        } else if (diffDays <= 60) {
-          batchBadge = "bg-amber-100 text-amber-800";
-          batchStatus = `${diffDays}d left`;
-        }
-
-        tr.innerHTML = `
-          <td class="py-3 px-4">
-            <div class="font-bold text-slate-900">${dateStr}</div>
-            <div class="text-[10px] text-slate-500 font-mono">${p.invoice || 'Direct Supply'}</div>
-          </td>
-          <td class="py-3 px-4 font-semibold text-slate-700">${p.supplier || 'Dental Supplier'}</td>
-          <td class="py-3 px-4 font-bold text-slate-900">${p.itemName}</td>
-          <td class="py-3 px-4 font-mono text-xs text-clinical-700 font-bold">${p.batchNumber}</td>
-          <td class="py-3 px-4 font-semibold text-slate-600">${p.expiryDate}</td>
-          <td class="py-3 px-4 text-right font-black text-emerald-600">+${p.quantity}</td>
-          <td class="py-3 px-4 text-right font-bold text-slate-800">₹${(Number(p.unitCost) * Number(p.quantity)).toLocaleString('en-IN')}</td>
-          <td class="py-3 px-4 text-center">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${batchBadge}">
-              ${batchStatus}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    window.handlePurchaseSubmit = async function(e) {
-      e.preventDefault();
-      const itemId = document.getElementById('purchaseItemId').value;
-      const supplier = document.getElementById('purchaseSupplier').value.trim();
-      const invoice = document.getElementById('purchaseInvoice').value.trim();
-      const batchNumber = document.getElementById('purchaseBatchNumber').value.trim();
-      const expiryDate = document.getElementById('purchaseExpiryDate').value;
-      const quantity = Number(document.getElementById('purchaseQuantity').value) || 1;
-      const unitCost = Number(document.getElementById('purchaseUnitCost').value) || 0;
-
-      const item = catalogItems.find(i => i.id === itemId);
-      if (!item) {
-        showToast("Please choose an existing catalog item", "rose");
-        return;
-      }
-
-      const purchaseData = {
-        itemId,
-        itemName: item.name,
-        supplier,
-        invoice,
-        batchNumber,
-        expiryDate,
-        quantity,
-        unitCost,
-        timestamp: new Date().toISOString()
-      };
-
-      try {
-        // 1. Add inward purchase batch
-        if (db && user) {
-          const pCol = collection(db, 'artifacts', appId, 'public', 'data', 'purchases');
-          await addDoc(pCol, purchaseData);
-
-          // 2. Increment stock in master item
-          const newStock = (Number(item.stock) || 0) + quantity;
-          const itemDoc = doc(db, 'artifacts', appId, 'public', 'data', 'catalog', itemId);
-          await updateDoc(itemDoc, { stock: newStock });
-        } else {
-          purchaseRecords.push({ id: `batch-${Date.now()}`, ...purchaseData });
-          item.stock = (Number(item.stock) || 0) + quantity;
-        }
-
-        showToast(`Added ${quantity} ${item.unit}(s) of ${item.name} to stock`, "emerald");
-        closeModal('purchaseModal');
-        document.getElementById('purchaseForm').reset();
-        refreshAllUI();
-      } catch (err) {
-        console.error("Purchase save error:", err);
-        showToast("Failed to save inward purchase", "rose");
-      }
-    };
-
-    // ==========================================
-    // MODULE 4: CLINICAL USAGE (STOCK-OUT)
-    // ==========================================
-    function renderUsageTable() {
-      const tbody = document.getElementById('usageTableBody');
-      tbody.innerHTML = '';
-
-      if (usageRecords.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-semibold">No procedure consumption logged yet.</td></tr>`;
-        return;
-      }
-
-      usageRecords.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition";
-        const dateStr = u.timestamp ? new Date(u.timestamp).toLocaleString('en-IN', {
-          dateStyle: 'medium',
-          timeStyle: 'short'
-        }) : 'Recent';
-
-        tr.innerHTML = `
-          <td class="py-3 px-4 text-slate-500">${dateStr}</td>
-          <td class="py-3 px-4 font-bold text-slate-900">${u.procedure}</td>
-          <td class="py-3 px-4 font-semibold text-slate-800">${u.itemName}</td>
-          <td class="py-3 px-4 text-right font-black text-rose-600">-${u.quantity}</td>
-          <td class="py-3 px-4 font-mono text-xs text-slate-500">${u.batchNumber || 'Direct Stock'}</td>
-          <td class="py-3 px-4 text-slate-700">${u.patient || 'General OPD'}</td>
-          <td class="py-3 px-4">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700">
-              ${u.dispensedBy}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    window.updateUsageBatchOptions = function() {
-      const itemId = document.getElementById('usageItemId').value;
-      const batchSelect = document.getElementById('usageBatchId');
-      batchSelect.innerHTML = `<option value="GENERAL">General Active Inventory</option>`;
-
-      const matchingBatches = purchaseRecords.filter(p => p.itemId === itemId);
-      matchingBatches.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.batchNumber;
-        opt.textContent = `Batch: ${b.batchNumber} (Exp: ${b.expiryDate})`;
-        batchSelect.appendChild(opt);
-      });
-    };
-
-    window.handleUsageSubmit = async function(e) {
-      e.preventDefault();
-      const itemId = document.getElementById('usageItemId').value;
-      const batchNumber = document.getElementById('usageBatchId').value;
-      const quantity = Number(document.getElementById('usageQuantity').value) || 1;
-      const procedure = document.getElementById('usageProcedure').value;
-      const patient = document.getElementById('usagePatient').value.trim() || 'General OPD';
-      const dispensedBy = document.getElementById('usageDispensedBy').value;
-
-      const item = catalogItems.find(i => i.id === itemId);
-      if (!item) return;
-
-      if ((Number(item.stock) || 0) < quantity) {
-        showToast(`Cannot deduct ${quantity}. Only ${item.stock} in stock!`, "rose");
-        return;
-      }
-
-      const usageData = {
-        itemId,
-        itemName: item.name,
-        batchNumber,
-        quantity,
-        procedure,
-        patient,
-        dispensedBy,
-        timestamp: new Date().toISOString()
-      };
-
-      try {
-        if (db && user) {
-          // 1. Add usage log
-          const uCol = collection(db, 'artifacts', appId, 'public', 'data', 'usage');
-          await addDoc(uCol, usageData);
-
-          // 2. Deduct from master stock
-          const newStock = Math.max(0, (Number(item.stock) || 0) - quantity);
-          const itemDoc = doc(db, 'artifacts', appId, 'public', 'data', 'catalog', itemId);
-          await updateDoc(itemDoc, { stock: newStock });
-        } else {
-          usageRecords.unshift({ id: `usage-${Date.now()}`, ...usageData });
-          item.stock = Math.max(0, (Number(item.stock) || 0) - quantity);
-        }
-
-        showToast(`Deducted ${quantity} ${item.unit}(s) for ${procedure}`, "emerald");
-        closeModal('usageModal');
-        document.getElementById('usageForm').reset();
-        refreshAllUI();
-      } catch (err) {
-        console.error("Usage record error:", err);
-        showToast("Failed to record usage", "rose");
-      }
-    };
-
-    // ==========================================
-    // MODULE 5: EXPIRY & LOW-STOCK SMART ALERTS
-    // ==========================================
-    function renderAlertsCenter() {
-      const lowStockList = document.getElementById('lowStockAlertsList');
-      const expiryList = document.getElementById('expiryAlertsList');
-      
-      const lowItems = catalogItems.filter(i => Number(i.stock) <= Number(i.minStock));
-      document.getElementById('lowStockBadgeCount').textContent = `${lowItems.length} Items`;
-
-      lowStockList.innerHTML = '';
-      if (lowItems.length === 0) {
-        lowStockList.innerHTML = `
-          <div class="py-8 text-center text-slate-400">
-            <i class="ph-bold ph-check-circle text-3xl text-emerald-500 mb-1"></i>
-            <p class="text-xs font-semibold">All inventory levels meet or exceed safe reserves.</p>
-          </div>
-        `;
-      } else {
-        lowItems.forEach(item => {
-          const deficit = Math.max(0, Number(item.minStock) - Number(item.stock));
-          const div = document.createElement('div');
-          div.className = "py-3 flex items-center justify-between";
-          div.innerHTML = `
-            <div>
-              <p class="font-bold text-slate-900 text-xs">${item.name}</p>
-              <p class="text-[10px] text-slate-500">${item.category} • SKU: ${item.sku}</p>
-              <div class="flex items-center space-x-2 mt-1">
-                <span class="text-[10px] font-bold text-rose-600">Stock: ${item.stock} ${item.unit}</span>
-                <span class="text-[10px] text-slate-400">• Threshold: ${item.minStock}</span>
-              </div>
-            </div>
-            <div class="flex items-center space-x-2">
-              <span class="px-2 py-1 rounded-lg text-xs font-black bg-rose-50 text-rose-700 border border-rose-200">
-                Deficit: +${deficit}
-              </span>
-              <button onclick="quickAddStock('${item.id}')" class="px-2.5 py-1.5 bg-clinical-600 hover:bg-clinical-700 text-white rounded-lg text-xs font-bold transition">
-                Order
-              </button>
-            </div>
-          `;
-          lowStockList.appendChild(div);
-        });
-      }
-
-      // Expiry surveillance (< 60 days)
-      const now = new Date();
-      const in60Days = new Date();
-      in60Days.setDate(in60Days.getDate() + 60);
-
-      const criticalBatches = purchaseRecords.filter(batch => {
-        if (!batch.expiryDate) return false;
-        const exp = new Date(batch.expiryDate);
-        return exp <= in60Days;
-      });
-      document.getElementById('expiryBadgeCount').textContent = `${criticalBatches.length} Batches`;
-
-      expiryList.innerHTML = '';
-      if (criticalBatches.length === 0) {
-        expiryList.innerHTML = `
-          <div class="py-8 text-center text-slate-400">
-            <i class="ph-bold ph-seal-check text-3xl text-emerald-500 mb-1"></i>
-            <p class="text-xs font-semibold">No materials expiring within the next 60 days.</p>
-          </div>
-        `;
-      } else {
-        criticalBatches.forEach(b => {
-          const expDate = new Date(b.expiryDate);
-          const diffDays = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
-          const isExpired = diffDays <= 0;
-
-          const div = document.createElement('div');
-          div.className = "py-3 flex items-center justify-between";
-          div.innerHTML = `
-            <div>
-              <p class="font-bold text-slate-900 text-xs">${b.itemName}</p>
-              <p class="text-[10px] text-slate-500 font-mono">Lot: ${b.batchNumber} • Supplier: ${b.supplier}</p>
-              <p class="text-[10px] font-semibold text-slate-400 mt-0.5">Expiry: ${b.expiryDate}</p>
-            </div>
-            <div class="text-right">
-              <span class="px-2.5 py-1 rounded-full text-xs font-black ${isExpired ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
-                ${isExpired ? 'EXPIRED' : `${diffDays} Days Left`}
-              </span>
-            </div>
-          `;
-          expiryList.appendChild(div);
-        });
+        document.getElementById('tableContainer').innerHTML = `<p style="color:red;">Query error: ${err.message}</p>`;
       }
     }
 
-    // Populate dropdown items in modals
-    function populateDropdowns() {
-      const pSelect = document.getElementById('purchaseItemId');
-      const uSelect = document.getElementById('usageItemId');
-      if (!pSelect || !uSelect) return;
-
-      const pVal = pSelect.value;
-      const uVal = uSelect.value;
-
-      pSelect.innerHTML = '';
-      uSelect.innerHTML = '';
-
-      catalogItems.forEach(item => {
-        const opt1 = document.createElement('option');
-        opt1.value = item.id;
-        opt1.textContent = `${item.name} (${item.category})`;
-        pSelect.appendChild(opt1);
-
-        const opt2 = document.createElement('option');
-        opt2.value = item.id;
-        opt2.textContent = `${item.name} [Available: ${item.stock} ${item.unit}]`;
-        uSelect.appendChild(opt2);
-      });
-
-      if (pVal) pSelect.value = pVal;
-      if (uVal) uSelect.value = uVal;
+    // 6. Delete Record
+    function deleteItem(id) {
+      db.run("DELETE FROM inventory WHERE id = ?", [id]);
+      renderTable();
     }
 
-    // Requisition Order Slip Generation
-    window.generateRequisitionOrder = function() {
-      const lowItems = catalogItems.filter(i => Number(i.stock) <= Number(i.minStock));
-      const container = document.getElementById('requisitionContent');
-
-      if (lowItems.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-6">
-            <i class="ph-bold ph-thumbs-up text-4xl text-clinical-600 mb-2"></i>
-            <p class="font-bold text-slate-800">No Restock Needed!</p>
-            <p class="text-xs text-slate-500">All inventory items are currently above their safety thresholds.</p>
-          </div>
-        `;
-      } else {
-        let rowsHtml = '';
-        let totalEst = 0;
-
-        lowItems.forEach((item, index) => {
-          const suggestedOrder = (Number(item.minStock) * 2) - Number(item.stock);
-          const estCost = suggestedOrder * Number(item.price);
-          totalEst += estCost;
-
-          rowsHtml += `
-            <tr class="border-b border-slate-100">
-              <td class="py-2.5 px-3 font-semibold text-slate-800">${index + 1}. ${item.name}</td>
-              <td class="py-2.5 px-3 text-slate-500">${item.category}</td>
-              <td class="py-2.5 px-3 text-center text-rose-600 font-bold">${item.stock} / ${item.minStock}</td>
-              <td class="py-2.5 px-3 text-center font-bold text-clinical-700">${suggestedOrder} ${item.unit}</td>
-              <td class="py-2.5 px-3 text-right font-bold text-slate-800">₹${estCost.toLocaleString('en-IN')}</td>
-            </tr>
-          `;
-        });
-
-        container.innerHTML = `
-          <div class="mb-4">
-            <p class="text-xs text-slate-500">Date Generated: <span class="font-bold text-slate-800">${new Date().toLocaleDateString('en-IN', { dateStyle: 'full' })}</span></p>
-            <p class="text-xs text-slate-500">Authorized Signatory: <span class="font-bold text-slate-800">Dr. Soumita (Dental Clinic Director)</span></p>
-          </div>
-          <table class="w-full text-left text-xs mb-4">
-            <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
-              <tr>
-                <th class="py-2 px-3">Item Description</th>
-                <th class="py-2 px-3">Category</th>
-                <th class="py-2 px-3 text-center">On-Hand / Min</th>
-                <th class="py-2 px-3 text-center">Suggested Reorder</th>
-                <th class="py-2 px-3 text-right">Est. Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-            <tfoot>
-              <tr class="font-bold border-t-2 border-slate-300">
-                <td colspan="4" class="py-3 px-3 text-right text-slate-900">Total Estimated Indent Value:</td>
-                <td class="py-3 px-3 text-right text-clinical-700 text-sm">₹${totalEst.toLocaleString('en-IN')}</td>
-              </tr>
-            </tfoot>
-          </table>
-          <p class="text-[11px] text-slate-400 italic">Please procure genuine, factory-sealed materials with a minimum remaining shelf life of 18 months upon delivery.</p>
-        `;
-      }
-
-      openModal('requisitionModal');
-    };
-
-    window.copyRequisitionText = function() {
-      const lowItems = catalogItems.filter(i => Number(i.stock) <= Number(i.minStock));
-      if (lowItems.length === 0) {
-        showToast("Nothing to copy", "amber");
-        return;
-      }
-
-      let text = `*DR. SOUMITA'S DENTAL CARE - REQUISITION ORDER*\nDate: ${new Date().toLocaleDateString('en-IN')}\n\n`;
-      lowItems.forEach((i, idx) => {
-        const orderQty = (Number(i.minStock) * 2) - Number(i.stock);
-        text += `${idx + 1}. ${i.name} - Need: ${orderQty} ${i.unit} (Current: ${i.stock}, SKU: ${i.sku})\n`;
-      });
-
-      // Use document.execCommand fallback for iframe clipboard compliance
-      const dummy = document.createElement("textarea");
-      document.body.appendChild(dummy);
-      dummy.value = text;
-      dummy.select();
-      document.execCommand("copy");
-      document.body.removeChild(dummy);
-
-      showToast("Indent copied to clipboard!", "clinical");
-    };
-
-    // Initialize application on window load
-    window.addEventListener('DOMContentLoaded', () => {
-      initFirebaseSystem();
-    });
+    // 7. Export .db Binary File
+    function exportDB() {
+      if (!db) return;
+      const binaryArray = db.export();
+      const blob = new Blob([binaryArray], { type: 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'inventory.db';
+      a.click();
+    }
   </script>
 </body>
 </html>
