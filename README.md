@@ -1,4 +1,4 @@
-# Dental Care Inventory — setup
+# Dental Care Inventory — setup 
 
 React + Vite web app with Supabase cloud authentication and PostgreSQL storage.
 
