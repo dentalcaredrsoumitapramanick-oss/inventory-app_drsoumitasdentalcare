@@ -1,43 +1,38 @@
-<script>
-        // 1. Firebase Configuration (Injected via GitHub Actions)
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Dr. Soumita's Dental Care Inventory System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs MUST BE LOADED FIRST -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+
+    <!-- Your HTML content / Form / Table goes here -->
+
+    <!-- Your Custom Script running after the SDKs are loaded -->
+    <script>
         const firebaseConfig = {
-            apiKey: "__FIREBASE_API_KEY__",
-            authDomain: "__FIREBASE_AUTH_DOMAIN__",
-            databaseURL: "__FIREBASE_DATABASE_URL__",
-            projectId: "__FIREBASE_PROJECT_ID__",
-            storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-            messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
-            appId: "__FIREBASE_APP_ID__",
-            measurementId: "__FIREBASE_MEASUREMENT_ID__"
+            apiKey: "...",
+            authDomain: "dental-care-8094e.firebaseapp.com",
+            projectId: "dental-care-8094e",
+            storageBucket: "dental-care-8094e.firebasestorage.app",
+            messagingSenderId: "327731999527",
+            appId: "1:327731999527:web:465f2abd6aa0f84534ef02"
         };
+
+        // This will now work without ReferenceError
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 2. EmailJS Initialization
-        const EMAILJS_PUBLIC_KEY = "__EMAILJS_PUBLIC_KEY__";
-        const EMAILJS_SERVICE_ID = "__EMAILJS_SERVICE_ID__";
-        const EMAILJS_TEMPLATE_ID = "__EMAILJS_TEMPLATE_ID__";
-
-        (function() {
-            emailjs.init(EMAILJS_PUBLIC_KEY);
-        })();
-
         // ... rest of your code ...
-
-        function sendLowStockEmail(itemName, currentQty) {
-            const templateParams = {
-                to_email: "dentalcaredrsoumitapramanick@gmail.com",
-                item_name: itemName,
-                current_qty: currentQty
-            };
-
-            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-                .then(function(response) {
-                    console.log('SUCCESS!', response.status, response.text);
-                }, function(error) {
-                    console.log('FAILED...', error);
-                });
-        }
-
-        window.onload = loadInventory;
     </script>
+</body>
+</html>
