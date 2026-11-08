@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <title>ডেন্টাল ক্লিনিক ইনভেন্টরি</title>
+    <title>Dr. Soumita's Dental Care Inventory System</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDKs -->
@@ -13,21 +13,21 @@
 </head>
 <body class="bg-gray-100 p-8">
     <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-        <h1 class="text-2xl font-bold mb-4">ইনভেন্টরি ম্যানেজমেন্ট</h1>
+        <h1 class="text-2xl font-bold mb-4">Dr. Soumita's Dental Care Inventory Systemট</h1>
         <!-- Stock Form -->
         <form id="inventoryForm" class="grid grid-cols-3 gap-4 mb-6">
-            <input type="text" id="itemName" placeholder="আইটেমের নাম" class="border p-2 rounded" required>
-            <input type="number" id="itemQty" placeholder="পরিমাণ" class="border p-2 rounded" required>
-            <input type="number" id="itemThreshold" placeholder="ন্যূনতম সীমা (Alert Level)" class="border p-2 rounded" required>
-            <button type="submit" class="col-span-3 bg-blue-500 text-white p-2 rounded">সংরক্ষণ করুন</button>
+            <input type="text" id="itemName" placeholder="Item Name" class="border p-2 rounded" required>
+            <input type="number" id="itemQty" placeholder="Quantity" class="border p-2 rounded" required>
+            <input type="number" id="itemThreshold" placeholder="Min. Quantity (Alert Level)" class="border p-2 rounded" required>
+            <button type="submit" class="col-span-3 bg-blue-500 text-white p-2 rounded">Save</button>
         </form>
         <!-- Inventory Table -->
         <table class="w-full border-collapse border">
             <thead>
                 <tr class="bg-gray-200">
-                    <th class="border p-2">নাম</th>
-                    <th class="border p-2">বর্তমান স্টক</th>
-                    <th class="border p-2">অ্যাকশন</th>
+                    <th class="border p-2">Item Name</th>
+                    <th class="border p-2">Current Stock</th>
+                    <th class="border p-2">Action</th>
                 </tr>
             </thead>
             <tbody id="inventoryList"></tbody>
@@ -75,6 +75,8 @@
                     const data = doc.data();
                     const isLow = data.qty <= data.threshold;
                     
+.com
+                                 
                     if (isLow) {
                         sendLowStockEmail(data.name, data.qty);
                     }
