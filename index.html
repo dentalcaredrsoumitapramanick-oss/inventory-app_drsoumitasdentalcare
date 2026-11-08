@@ -2,11 +2,13 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dr. Soumita's Dental Care Inventory System</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase SDKs MUST BE LOADED FIRST -->
+    <!-- Pre-compiled Tailwind CSS (fixes the production warning) -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDKs (Compat versions loaded in head to prevent ReferenceError) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
@@ -14,25 +16,45 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+        <h1 class="text-2xl font-bold mb-4">Dr. Soumita's Dental Care Inventory System</h1>
+        
+        <!-- Stock Form -->
+        <form id="inventoryForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <input type="text" id="itemName" placeholder="Item Name" class="border p-2 rounded" required>
+            <input type="number" id="itemQty" placeholder="Quantity" class="border p-2 rounded" required>
+            <input type="number" id="itemThreshold" placeholder="Min. Quantity (Alert Level)" class="border p-2 rounded" required>
+            <button type="submit" class="col-span-1 md:col-span-3 bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">Save</button>
+        </form>
+        
+        <!-- Inventory Table -->
+        <table class="w-full border-collapse border">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="border p-2 text-left">Item Name</th>
+                    <th class="border p-2 text-left">Current Stock</th>
+                    <th class="border p-2 text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryList"></tbody>
+        </table>
+    </div>
 
-    <!-- Your HTML content / Form / Table goes here -->
-
-    <!-- Your Custom Script running after the SDKs are loaded -->
     <script>
+        // 1. Firebase Configuration
         const firebaseConfig = {
-            apiKey: "...",
+            apiKey: "AIzaSyC1zQBE_wl5RQRQzbTDxMYpjuYOXGF520E",
             authDomain: "dental-care-8094e.firebaseapp.com",
+            databaseURL: "https://dental-care-8094e-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "dental-care-8094e",
             storageBucket: "dental-care-8094e.firebasestorage.app",
             messagingSenderId: "327731999527",
-            appId: "1:327731999527:web:465f2abd6aa0f84534ef02"
+            appId: "1:327731999527:web:465f2abd6aa0f84534ef02",
+            measurementId: "G-LE80ZHXSCL"
         };
-
-        // This will now work without ReferenceError
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // ... rest of your code ...
-    </script>
-</body>
-</html>
+        // 2. EmailJS Credentials
+        const EMAILJS_PUBLIC_KEY = "J_HmRzqV_3_Xu1vM7";
+        const
