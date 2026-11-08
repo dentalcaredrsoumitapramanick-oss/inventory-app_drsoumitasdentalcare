@@ -1,129 +1,43 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-    <meta charset="UTF-8">
-    <title>Dr. Soumita's Dental Care Inventory System</title>
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <!-- EmailJS SDK -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-</head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-        <h1 class="text-2xl font-bold mb-4">Dr. Soumita's Dental Care Inventory Systemট</h1>
-        <!-- Stock Form -->
-        <form id="inventoryForm" class="grid grid-cols-3 gap-4 mb-6">
-            <input type="text" id="itemName" placeholder="Item Name" class="border p-2 rounded" required>
-            <input type="number" id="itemQty" placeholder="Quantity" class="border p-2 rounded" required>
-            <input type="number" id="itemThreshold" placeholder="Min. Quantity (Alert Level)" class="border p-2 rounded" required>
-            <button type="submit" class="col-span-3 bg-blue-500 text-white p-2 rounded">Save</button>
-        </form>
-        <!-- Inventory Table -->
-        <table class="w-full border-collapse border">
-            <thead>
-                <tr class="bg-gray-200">
-                    <th class="border p-2">Item Name</th>
-                    <th class="border p-2">Current Stock</th>
-                    <th class="border p-2">Action</th>
-                </tr>
-            </thead>
-            <tbody id="inventoryList"></tbody>
-        </table>
-    </div>
-
-    <script>
-        // ১. Firebase কনফিগারেশন (আপনার Firebase প্রজেক্ট থেকে এখানে তথ্য বসান)
+<script>
+        // 1. Firebase Configuration (Injected via GitHub Actions)
         const firebaseConfig = {
-    apiKey: "AIzaSyC1zQBE_wl5RQRQzbTDxMYpjuYOXGF520E",
-    authDomain: "dental-care-8094e.firebaseapp.com",
-    databaseURL: "https://dental-care-8094e-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "dental-care-8094e",
-    storageBucket: "dental-care-8094e.firebasestorage.app",
-    messagingSenderId: "327731999527",
-    appId: "1:327731999527:web:465f2abd6aa0f84534ef02",
-    measurementId: "G-LE80ZHXSCL"
+            apiKey: "__FIREBASE_API_KEY__",
+            authDomain: "__FIREBASE_AUTH_DOMAIN__",
+            databaseURL: "__FIREBASE_DATABASE_URL__",
+            projectId: "__FIREBASE_PROJECT_ID__",
+            storageBucket: "__FIREBASE_STORAGE_BUCKET__",
+            messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+            appId: "__FIREBASE_APP_ID__",
+            measurementId: "__FIREBASE_MEASUREMENT_ID__"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // ২. EmailJS ইনিশিয়ালাইজেশন
+        // 2. EmailJS Initialization
+        const EMAILJS_PUBLIC_KEY = "__EMAILJS_PUBLIC_KEY__";
+        const EMAILJS_SERVICE_ID = "__EMAILJS_SERVICE_ID__";
+        const EMAILJS_TEMPLATE_ID = "__EMAILJS_TEMPLATE_ID__";
+
         (function() {
-            emailjs.init("J_HmRzqV_3_Xu1vM7");
+            emailjs.init(EMAILJS_PUBLIC_KEY);
         })();
 
-        // ডেটা যোগ করা এবং Firestore-এ সেভ করা
-        document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('itemName').value;
-            const qty = parseInt(document.getElementById('itemQty').value);
-            const threshold = parseInt(document.getElementById('itemThreshold').value);
+        // ... rest of your code ...
 
-            await db.collection('inventory').add({ name, qty, threshold });
-            loadInventory();
-        });
-
-        // ইনভেন্টরি লোড করা এবং রিয়েল-টাইম আপডেট চেক
-        function loadInventory() {
-            const list = document.getElementById('inventoryList');
-            list.innerHTML = '';
-            db.collection('inventory').onSnapshot((snapshot) => {
-                list.innerHTML = '';
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const isLow = data.qty <= data.threshold;
-                    
-.com
-                                 
-                    if (isLow) {
-                        sendLowStockEmail(data.name, data.qty);
-                    }
-
-                    list.innerHTML += `
-                        <tr class="${isLow ? 'bg-red-100' : ''}">
-                            <td class="border p-2">${data.name}</td>
-                            <td class="border p-2">${data.qty} ${isLow ? '⚠️ কম স্টক!' : ''}</td>
-                            <td class="border p-2">
-                                <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 p-1 rounded">-</button>
-                                <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 p-1 rounded">+</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            });
-        }
-
-        // স্টক আপডেট ফাংশন
-        async function updateQty(id, currentQty, change) {
-            const newQty = currentQty + change;
-            if (newQty >= 0) {
-                await db.collection('inventory').doc(id).update({ qty: newQty });
-            }
-        }
-
-        // EmailJS এর মাধ্যমে ইমেইল অ্যালার্ট পাঠানো
         function sendLowStockEmail(itemName, currentQty) {
-            // সতর্কবার্তা যাতে বারবার না যায় তার জন্য একটি লজিক বা ফ্ল্যাগ ব্যবহার করা উচিত
             const templateParams = {
                 to_email: "dentalcaredrsoumitapramanick@gmail.com",
                 item_name: itemName,
                 current_qty: currentQty
             };
-            
-            // নিচের ফাংশনটি সক্রিয় করতে EmailJS ড্যাশবোর্ড থেকে Service ID ও Template ID দিন
-                emailjs.init('J_HmRzqV_3_Xu1vM7')
-                emailjs.send('service_az6xx4a', 'template_l5k8fv7', templateParams)
-                .then(function(response) {
-                   console.log('SUCCESS!', response.status, response.text);
-                }, function(error) {
-                   console.log('FAILED...', error);
-                });
-    }
 
-        // পেজ লোড হলে ইনভেন্টরি দেখাবে
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+                .then(function(response) {
+                    console.log('SUCCESS!', response.status, response.text);
+                }, function(error) {
+                    console.log('FAILED...', error);
+                });
+        }
+
         window.onload = loadInventory;
     </script>
-</body>
-</html>
