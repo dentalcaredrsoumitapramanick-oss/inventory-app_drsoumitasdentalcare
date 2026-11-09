@@ -219,12 +219,14 @@
                 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-                    const isLow = data.qty <= data.threshold;
+                    const currentQty = Number(data.qty) || 0;
+                    const threshold = Number(data.threshold) || 0;
+                    const isLow = currentQty <= threshold;
 
                     if (isLow) {
                         hasLowStock = true;
                         if (!alertedItems.has(doc.id)) {
-                            sendLowStockEmail(data.name, data.qty);
+                            sendLowStockEmail(data.name, currentQty);
                             alertedItems.add(doc.id);
                         }
                     } else {
@@ -237,27 +239,35 @@
                         <td class="py-3 px-6 font-semibold text-gray-900">${data.name}</td>
                         <td class="py-3 px-6">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold ${isLow ? 'text-red-700' : 'text-gray-800'} text-base">${data.qty}</span>
+                                <span class="font-bold ${isLow ? 'text-red-700' : 'text-gray-800'} text-base">${currentQty}</span>
                                 ${isLow ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">⚠️ Low</span>' : ''}
                             </div>
                         </td>
-                        <td class="py-3 px-6 text-gray-500 font-medium">${data.threshold}</td>
+                        <td class="py-3 px-6 text-gray-500 font-medium">${threshold}</td>
                         <td class="py-3 px-6 text-center whitespace-nowrap">
                             <div class="inline-flex items-center gap-1.5">
-                                <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" 
-                                        class="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center transition shadow-xs" title="Decrease">
+                                <button type="button" 
+                                        onclick="updateQty('${doc.id}', ${currentQty}, -1)" 
+                                        class="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center transition shadow-xs focus:outline-none" 
+                                        title="Decrease Stock">
                                     -
                                 </button>
-                                <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" 
-                                        class="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold flex items-center justify-center transition shadow-xs" title="Increase">
+                                <button type="button" 
+                                        onclick="updateQty('${doc.id}', ${currentQty}, 1)" 
+                                        class="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold flex items-center justify-center transition shadow-xs focus:outline-none" 
+                                        title="Increase Stock">
                                     +
                                 </button>
-                                <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" 
-                                        class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold flex items-center justify-center transition border border-blue-200" title="Edit Min Alert Level">
+                                <button type="button" 
+                                        onclick="updateThreshold('${doc.id}', '${data.name}', ${threshold})" 
+                                        class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold flex items-center justify-center transition border border-blue-200 focus:outline-none" 
+                                        title="Edit Min Alert Level">
                                     ✏️
                                 </button>
-                                <button onclick="deleteItem('${doc.id}', '${data.name}')" 
-                                        class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold flex items-center justify-center transition border border-red-200" title="Delete Item">
+                                <button type="button" 
+                                        onclick="deleteItem('${doc.id}', '${data.name}')" 
+                                        class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold flex items-center justify-center transition border border-red-200 focus:outline-none" 
+                                        title="Delete Item">
                                     🗑️
                                 </button>
                             </div>
@@ -277,18 +287,24 @@
             });
         }
 
-        // Update item quantity
+        // Update item quantity (+ / -) using atomic increment
         window.updateQty = async function(id, currentQty, change) {
-            const newQty = currentQty + change;
-            if (newQty >= 0) {
-                try {
-                    await db.collection('inventory').doc(id).update({ 
-                        qty: newQty,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                } catch (err) {
-                    console.error("Error updating quantity:", err);
-                }
+            const numericQty = parseInt(currentQty, 10) || 0;
+            const newQty = numericQty + change;
+
+            if (newQty < 0) {
+                alert("Stock quantity cannot be less than 0.");
+                return;
+            }
+
+            try {
+                await db.collection('inventory').doc(id).update({ 
+                    qty: firebase.firestore.FieldValue.increment(change),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (err) {
+                console.error("Error updating stock quantity:", err);
+                alert("Failed to update stock: " + err.message);
             }
         };
 
@@ -343,8 +359,8 @@
 
                 snapshot.forEach((docItem) => {
                     const data = docItem.data();
-                    const qty = data.qty ?? 0;
-                    const threshold = data.threshold ?? 0;
+                    const qty = Number(data.qty) || 0;
+                    const threshold = Number(data.threshold) || 0;
                     
                     if (qty <= threshold) {
                         lowStockItems.push([
@@ -409,7 +425,7 @@
                     const data = docItem.data();
                     summaryItems.push([
                         data.name || "N/A",
-                        (data.qty ?? 0).toString()
+                        (Number(data.qty) || 0).toString()
                     ]);
                 });
 
@@ -427,46 +443,3 @@
                 doc.text("Current Stock Summary List", 14, 23);
                 
                 doc.setFontSize(9);
-                doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 29);
-
-                doc.autoTable({
-                    startY: 34,
-                    head: [['Item Name', 'Available Quantity']],
-                    body: summaryItems,
-                    headStyles: { 
-                        fillColor: [37, 99, 235], // Blue
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold'
-                    },
-                    alternateRowStyles: { fillColor: [241, 245, 249] },
-                    styles: { fontSize: 10, cellPadding: 3.5 }
-                });
-
-                doc.save(`DentalCare_CurrentStock_${new Date().toISOString().slice(0, 10)}.pdf`);
-            }).catch((err) => {
-                console.error("Error generating PDF:", err);
-                alert("Failed to export PDF: " + err.message);
-            });
-        };
-
-        // Send EmailJS Notification
-        function sendLowStockEmail(itemName, currentQty) {
-            const templateParams = {
-                to_email: RECIPIENT_EMAIL,
-                item_name: itemName,
-                current_qty: currentQty
-            };
-
-            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-                .then(function(response) {
-                    console.log('Low stock alert sent successfully:', response.status, response.text);
-                })
-                .catch(function(error) {
-                    console.error('Failed to send low stock alert:', error);
-                });
-        }
-
-        window.onload = loadInventory;
-    </script>
-</body>
-</html>
