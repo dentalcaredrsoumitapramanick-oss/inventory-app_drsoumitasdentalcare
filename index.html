@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dr. Soumita's Dental Care Inventory System</title>
     
-    <!-- Pre-compiled Tailwind CSS (fixes the production warning) -->
+    <!-- Pre-compiled Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     
-    <!-- Firebase SDKs (Compat versions loaded in head to prevent ReferenceError) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
@@ -63,7 +63,6 @@
 
         emailjs.init(EMAILJS_PUBLIC_KEY);
 
-        // Track alerts already sent during this session to prevent spam loops
         const alertedItems = new Set();
 
         // Form Submit: Add new item to Firestore
@@ -92,14 +91,12 @@
                     const data = doc.data();
                     const isLow = data.qty <= data.threshold;
 
-                    // Trigger alert only once when stock falls to or below threshold
                     if (isLow) {
                         if (!alertedItems.has(doc.id)) {
                             sendLowStockEmail(data.name, data.qty);
                             alertedItems.add(doc.id);
                         }
                     } else {
-                        // Reset alert trigger if stock is replenished
                         alertedItems.delete(doc.id);
                     }
 
@@ -110,9 +107,10 @@
                         <td class="border p-2">
                             ${data.qty} ${isLow ? '<span class="text-red-600 font-bold ml-2">⚠️ কম স্টক!</span>' : ''}
                         </td>
-                        <td class="border p-2 text-center">
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-2 font-bold">-</button>
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold">+</button>
+                        <td class="border p-2 text-center whitespace-nowrap">
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-1 font-bold">-</button>
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2 font-bold">+</button>
+                            <button onclick="deleteItem('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded font-bold" title="Delete Item">🗑️</button>
                         </td>
                     `;
                     list.appendChild(row);
@@ -130,6 +128,19 @@
                     await db.collection('inventory').doc(id).update({ qty: newQty });
                 } catch (err) {
                     console.error("Error updating quantity:", err);
+                }
+            }
+        }
+
+        // Delete item from Firestore
+        async function deleteItem(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+                try {
+                    await db.collection('inventory').doc(id).delete();
+                    alertedItems.delete(id);
+                } catch (err) {
+                    console.error("Error deleting item:", err);
+                    alert("Failed to delete item: " + err.message);
                 }
             }
         }
