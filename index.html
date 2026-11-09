@@ -57,4 +57,101 @@
 
         // 2. EmailJS Credentials
         const EMAILJS_PUBLIC_KEY = "J_HmRzqV_3_Xu1vM7";
-        const
+        const EMAILJS_SERVICE_ID = "service_az6xx4a";
+        const EMAILJS_TEMPLATE_ID = "template_l5k8fv7";
+        const RECIPIENT_EMAIL = "dentalcaredrsoumitapramanick@gmail.com";
+
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        // Track alerts already sent during this session to prevent spam loops
+        const alertedItems = new Set();
+
+        // Form Submit: Add new item to Firestore
+        document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('itemName').value.trim();
+            const qty = parseInt(document.getElementById('itemQty').value, 10);
+            const threshold = parseInt(document.getElementById('itemThreshold').value, 10);
+
+            try {
+                await db.collection('inventory').add({ name, qty, threshold });
+                document.getElementById('inventoryForm').reset();
+            } catch (err) {
+                console.error("Error adding item:", err);
+            }
+        });
+
+        // Load Inventory and Listen for Real-Time Updates
+        function loadInventory() {
+            const list = document.getElementById('inventoryList');
+            
+            db.collection('inventory').onSnapshot((snapshot) => {
+                list.innerHTML = '';
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const isLow = data.qty <= data.threshold;
+
+                    // Trigger alert only once when stock falls to or below threshold
+                    if (isLow) {
+                        if (!alertedItems.has(doc.id)) {
+                            sendLowStockEmail(data.name, data.qty);
+                            alertedItems.add(doc.id);
+                        }
+                    } else {
+                        // Reset alert trigger if stock is replenished
+                        alertedItems.delete(doc.id);
+                    }
+
+                    const row = document.createElement('tr');
+                    row.className = isLow ? 'bg-red-100' : '';
+                    row.innerHTML = `
+                        <td class="border p-2 font-medium">${data.name}</td>
+                        <td class="border p-2">
+                            ${data.qty} ${isLow ? '<span class="text-red-600 font-bold ml-2">⚠️ কম স্টক!</span>' : ''}
+                        </td>
+                        <td class="border p-2 text-center">
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-2 font-bold">-</button>
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold">+</button>
+                        </td>
+                    `;
+                    list.appendChild(row);
+                });
+            }, (error) => {
+                console.error("Error loading inventory:", error);
+            });
+        }
+
+        // Update item quantity in Firestore
+        async function updateQty(id, currentQty, change) {
+            const newQty = currentQty + change;
+            if (newQty >= 0) {
+                try {
+                    await db.collection('inventory').doc(id).update({ qty: newQty });
+                } catch (err) {
+                    console.error("Error updating quantity:", err);
+                }
+            }
+        }
+
+        // Send Low Stock Email Alert via EmailJS
+        function sendLowStockEmail(itemName, currentQty) {
+            const templateParams = {
+                to_email: RECIPIENT_EMAIL,
+                item_name: itemName,
+                current_qty: currentQty
+            };
+
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+                .then(function(response) {
+                    console.log('Low stock alert sent successfully:', response.status, response.text);
+                })
+                .catch(function(error) {
+                    console.error('Failed to send low stock alert:', error);
+                });
+        }
+
+        window.onload = loadInventory;
+    </script>
+</body>
+</html>
