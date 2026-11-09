@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dr. Soumita's Dental Care Inventory System</title>
+    <title>Dr. Soumita's Dental Care - Inventory Management</title>
     
     <!-- Pre-compiled Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -19,38 +19,102 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-        <h1 class="text-2xl font-bold mb-4">Dr. Soumita's Dental Care Inventory System</h1>
-        
-        <!-- Stock Form -->
-        <form id="inventoryForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <input type="text" id="itemName" placeholder="Item Name" class="border p-2 rounded" required>
-            <input type="number" id="itemQty" placeholder="Quantity" class="border p-2 rounded" required>
-            <input type="number" id="itemThreshold" placeholder="Min. Quantity (Alert Level)" class="border p-2 rounded" required>
-            <button type="submit" id="saveBtn" class="col-span-1 md:col-span-3 bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">Save</button>
-        </form>
+<body class="bg-gray-50 min-h-screen text-gray-800 antialiased py-8 px-4 sm:px-6 lg:px-8">
 
-        <!-- Top Actions -->
-        <div class="flex justify-between items-center mb-3">
-            <h2 class="text-lg font-bold text-gray-700">Inventory Items</h2>
-            <button type="button" id="pdfBtn" onclick="exportLowStockPDF()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded shadow transition">
-                📄 Export Low Stock PDF
+    <div class="max-w-5xl mx-auto space-y-6">
+
+        <!-- Modern Branded Header Card -->
+        <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4 text-center sm:text-left">
+                <!-- Clinic Logo -->
+                <div class="w-16 h-16 rounded-2xl bg-green-50 p-2 flex items-center justify-center border border-green-100 shadow-inner flex-shrink-0">
+                    <img src="logo.png" alt="Dr. Soumita's Dental Care Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <div class="flex items-center justify-center sm:justify-start gap-2">
+                        <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Dr. Soumita's Dental Care</h1>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">
+                            Active
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-500 font-medium">Smart Clinic Inventory & Restock Automation</p>
+                </div>
+            </div>
+
+            <!-- PDF Export Button -->
+            <button type="button" onclick="exportLowStockPDF()" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Low Stock PDF
             </button>
-        </div>
-        
-        <!-- Inventory Table -->
-        <table class="w-full border-collapse border">
-            <thead>
-                <tr class="bg-gray-200">
-                    <th class="border p-2 text-left">Item Name</th>
-                    <th class="border p-2 text-left">Current Stock</th>
-                    <th class="border p-2 text-left">Min. Level</th>
-                    <th class="border p-2 text-center">Action</th>
-                </tr>
-            </thead>
-            <tbody id="inventoryList"></tbody>
-        </table>
+        </header>
+
+        <!-- New Item Entry Form -->
+        <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                Add New Inventory Item
+            </h2>
+            <form id="inventoryForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Item Name</label>
+                    <input type="text" id="itemName" placeholder="e.g. Composite Kit, Dental Needle" 
+                           class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Stock Quantity</label>
+                    <input type="number" id="itemQty" placeholder="e.g. 20" 
+                           class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Min. Alert Level</label>
+                    <input type="number" id="itemThreshold" placeholder="e.g. 5" 
+                           class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" required>
+                </div>
+                <div class="md:col-span-4 flex justify-end">
+                    <button type="submit" id="saveBtn" 
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-sm hover:shadow transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Save Item
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Inventory List Table Card -->
+        <main class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Current Stock List</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Real-time status synced with clinic database</p>
+                </div>
+                <span id="lowStockBadge" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                    ⚠️ Low stock detected
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50/75 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                            <th class="py-3 px-6">Item Name</th>
+                            <th class="py-3 px-6">Current Stock</th>
+                            <th class="py-3 px-6">Min. Threshold</th>
+                            <th class="py-3 px-6 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList" class="divide-y divide-gray-100 text-sm">
+                        <tr>
+                            <td colspan="4" class="text-center py-8 text-gray-400">Loading inventory...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
     </div>
 
     <script>
@@ -78,41 +142,60 @@
 
         const alertedItems = new Set();
 
-        // Form Submit: Add new item to Firestore
+        // Form Submit: Add new item
         document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('saveBtn');
             btn.disabled = true;
-            btn.innerText = "Saving...";
+            btn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span> Saving...`;
 
             const name = document.getElementById('itemName').value.trim();
             const qty = parseInt(document.getElementById('itemQty').value, 10);
             const threshold = parseInt(document.getElementById('itemThreshold').value, 10);
 
             try {
-                await db.collection('inventory').add({ name, qty, threshold });
+                await db.collection('inventory').add({ 
+                    name, 
+                    qty, 
+                    threshold,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 document.getElementById('inventoryForm').reset();
             } catch (err) {
                 console.error("Error adding item:", err);
                 alert("Failed to save: " + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Save";
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Save Item
+                `;
             }
         });
 
-        // Load Inventory and Listen for Real-Time Updates
+        // Load Inventory and Real-Time Listener
         function loadInventory() {
             const list = document.getElementById('inventoryList');
+            const lowStockBadge = document.getElementById('lowStockBadge');
             
             db.collection('inventory').onSnapshot((snapshot) => {
                 list.innerHTML = '';
+                let hasLowStock = false;
+
+                if (snapshot.empty) {
+                    list.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">No inventory items added yet.</td></tr>`;
+                    lowStockBadge.classList.add('hidden');
+                    return;
+                }
                 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const isLow = data.qty <= data.threshold;
 
                     if (isLow) {
+                        hasLowStock = true;
                         if (!alertedItems.has(doc.id)) {
                             sendLowStockEmail(data.name, data.qty);
                             alertedItems.add(doc.id);
@@ -122,24 +205,48 @@
                     }
 
                     const row = document.createElement('tr');
-                    row.className = isLow ? 'bg-red-100' : '';
+                    row.className = isLow ? 'bg-red-50/70 hover:bg-red-100/60 transition' : 'hover:bg-gray-50/80 transition';
                     row.innerHTML = `
-                        <td class="border p-2 font-medium">${data.name}</td>
-                        <td class="border p-2">
-                            ${data.qty} ${isLow ? '<span class="text-red-600 font-bold ml-2">⚠️ কম স্টক!</span>' : ''}
+                        <td class="py-3 px-6 font-semibold text-gray-900">${data.name}</td>
+                        <td class="py-3 px-6">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold ${isLow ? 'text-red-700' : 'text-gray-800'} text-base">${data.qty}</span>
+                                ${isLow ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">⚠️ Low</span>' : ''}
+                            </div>
                         </td>
-                        <td class="border p-2">${data.threshold}</td>
-                        <td class="border p-2 text-center whitespace-nowrap">
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-1 font-bold">-</button>
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2 font-bold">+</button>
-                            <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded mr-1 font-bold" title="Edit Min Quantity">✏️</button>
-                            <button onclick="deleteItem('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded font-bold" title="Delete Item">🗑️</button>
+                        <td class="py-3 px-6 text-gray-500 font-medium">${data.threshold}</td>
+                        <td class="py-3 px-6 text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" 
+                                        class="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center transition shadow-xs" title="Decrease">
+                                    -
+                                </button>
+                                <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" 
+                                        class="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold flex items-center justify-center transition shadow-xs" title="Increase">
+                                    +
+                                </button>
+                                <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" 
+                                        class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold flex items-center justify-center transition border border-blue-200" title="Edit Min Alert Level">
+                                    ✏️
+                                </button>
+                                <button onclick="deleteItem('${doc.id}', '${data.name}')" 
+                                        class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold flex items-center justify-center transition border border-red-200" title="Delete Item">
+                                    🗑️
+                                </button>
+                            </div>
                         </td>
                     `;
                     list.appendChild(row);
                 });
+
+                if (hasLowStock) {
+                    lowStockBadge.classList.remove('hidden');
+                } else {
+                    lowStockBadge.classList.add('hidden');
+                }
             }, (error) => {
                 console.error("Error loading inventory:", error);
+                list.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-red-500">Error loading data: ${error.message}</td></tr>`;
             });
         }
 
@@ -148,26 +255,32 @@
             const newQty = currentQty + change;
             if (newQty >= 0) {
                 try {
-                    await db.collection('inventory').doc(id).update({ qty: newQty });
+                    await db.collection('inventory').doc(id).update({ 
+                        qty: newQty,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 } catch (err) {
                     console.error("Error updating quantity:", err);
                 }
             }
         };
 
-        // Modify Minimum Quantity (Threshold)
+        // Modify Minimum Alert Threshold
         window.updateThreshold = async function(id, name, currentThreshold) {
-            const newThresholdInput = prompt(`Enter new Alert Level (Min. Quantity) for "${name}":`, currentThreshold);
-            if (newThresholdInput === null) return;
+            const input = prompt(`Enter new Alert Level (Min. Quantity) for "${name}":`, currentThreshold);
+            if (input === null) return;
 
-            const newThreshold = parseInt(newThresholdInput, 10);
+            const newThreshold = parseInt(input, 10);
             if (isNaN(newThreshold) || newThreshold < 0) {
                 alert("Please enter a valid positive number.");
                 return;
             }
 
             try {
-                await db.collection('inventory').doc(id).update({ threshold: newThreshold });
+                await db.collection('inventory').doc(id).update({ 
+                    threshold: newThreshold,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 alertedItems.delete(id);
             } catch (err) {
                 console.error("Error updating threshold:", err);
@@ -188,10 +301,10 @@
             }
         };
 
-        // Export Low Stock Items as PDF (Bound to window to guarantee availability)
+        // Export Low Stock as PDF
         window.exportLowStockPDF = function() {
             if (!window.jspdf) {
-                alert("jsPDF library is still loading or failed to load. Please check your internet connection.");
+                alert("PDF generation library is still loading. Please check your connection.");
                 return;
             }
 
@@ -214,33 +327,42 @@
                 });
 
                 if (lowStockItems.length === 0) {
-                    alert("No low stock materials found at this time.");
+                    alert("All materials are currently above alert thresholds. No low stock items to export!");
                     return;
                 }
 
                 doc.setFontSize(16);
-                doc.text("Dr. Soumita's Dental Care", 14, 15);
-                doc.setFontSize(12);
-                doc.text("Low Stock Materials Report", 14, 22);
+                doc.setTextColor(33, 37, 41);
+                doc.text("Dr. Soumita's Dental Care", 14, 16);
+                
+                doc.setFontSize(11);
+                doc.setTextColor(100, 116, 139);
+                doc.text("Inventory Low Stock & Restock Report", 14, 23);
+                
                 doc.setFontSize(9);
-                doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+                doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 29);
 
                 doc.autoTable({
-                    startY: 32,
-                    head: [['Item Name', 'Current Stock', 'Min Level', 'Status']],
+                    startY: 34,
+                    head: [['Item Name', 'Current Stock', 'Min Alert Level', 'Status']],
                     body: lowStockItems,
-                    headStyles: { fillColor: [220, 38, 38] },
-                    styles: { fontSize: 10, cellPadding: 3 }
+                    headStyles: { 
+                        fillColor: [220, 38, 38],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold'
+                    },
+                    alternateRowStyles: { fillColor: [254, 242, 242] },
+                    styles: { fontSize: 10, cellPadding: 3.5 }
                 });
 
-                doc.save(`Low_Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+                doc.save(`DentalCare_LowStock_${new Date().toISOString().slice(0, 10)}.pdf`);
             }).catch((err) => {
                 console.error("Error generating PDF:", err);
                 alert("Failed to export PDF: " + err.message);
             });
         };
 
-        // Send Low Stock Email Alert via EmailJS
+        // Send EmailJS Notification
         function sendLowStockEmail(itemName, currentQty) {
             const templateParams = {
                 to_email: RECIPIENT_EMAIL,
