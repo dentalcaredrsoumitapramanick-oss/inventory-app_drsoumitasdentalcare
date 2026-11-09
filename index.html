@@ -43,11 +43,11 @@
 
             <!-- Two Distinct PDF Buttons -->
             <div class="flex flex-wrap items-center justify-center sm:justify-end gap-3">
-                <!-- Button 1: Export Current Stock PDF (Full Table with Metadata & Status) -->
+                <!-- Button 1: Export Low Stock PDF (Crimson Red) -->
                 <button type="button" 
-                        onclick="printLowStockPDF()" 
-                        title="Low Stock PDF List"
-                        class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                        onclick="exportLowStockPDF()" 
+                        title="Export Low Stock PDF"
+                        class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg"
                         class="w-5 h-5 transition-transform group-hover:-translate-y-0.5"
                         fill="none" viewBox="0 0 24 24"
@@ -59,11 +59,11 @@
                     Export Low Stock PDF
                 </button>
 
-                <!-- Button 2: Current Stock PDF (Quick View / Print Slip) -->
+                <!-- Button 2: Current Stock PDF (Blue) -->
                 <button type="button" 
                         onclick="printCurrentStockPDF()" 
-                        title="Current Stock PDF List"
-                        class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        title="Current Stock PDF"
+                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg"
                         class="w-5 h-5 transition-transform group-hover:-translate-y-0.5"
                         fill="none" viewBox="0 0 24 24"
@@ -328,8 +328,8 @@
             }
         };
 
-        // 1. "Export Current Stock PDF" (Full comprehensive report with thresholds & status)
-        window.exportprintLowStockPDF = function() {
+        // 1. "Export Low Stock PDF" (Only materials requiring urgent restock)
+        window.exportLowStockPDF = function() {
             if (!window.jspdf) {
                 alert("PDF generation library is still loading. Please check your connection.");
                 return;
@@ -339,22 +339,25 @@
             const doc = new jsPDF();
 
             db.collection('inventory').get().then((snapshot) => {
-                const stockItems = [];
+                const lowStockItems = [];
 
                 snapshot.forEach((docItem) => {
                     const data = docItem.data();
-                    const isLow = (data.qty ?? 0) <= (data.threshold ?? 0);
-
-                    stockItems.push([
-                        data.name || "N/A",
-                        (data.qty ?? 0).toString(),
-                        (data.threshold ?? 0).toString(),
-                        isLow ? "Low Stock (⚠️)" : "In Stock (OK)"
-                    ]);
+                    const qty = data.qty ?? 0;
+                    const threshold = data.threshold ?? 0;
+                    
+                    if (qty <= threshold) {
+                        lowStockItems.push([
+                            data.name || "N/A",
+                            qty.toString(),
+                            threshold.toString(),
+                            'Restock Required'
+                        ]);
+                    }
                 });
 
-                if (stockItems.length === 0) {
-                    alert("No inventory items found to export.");
+                if (lowStockItems.length === 0) {
+                    alert("All materials are currently above alert thresholds. No low stock items to export!");
                     return;
                 }
 
@@ -364,7 +367,7 @@
                 
                 doc.setFontSize(11);
                 doc.setTextColor(100, 116, 139);
-                doc.text("Complete Inventory & Current Stock Report", 14, 23);
+                doc.text("Low Stock & Restock Alert Report", 14, 23);
                 
                 doc.setFontSize(9);
                 doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 29);
@@ -372,24 +375,24 @@
                 doc.autoTable({
                     startY: 34,
                     head: [['Item Name', 'Current Stock', 'Min Alert Level', 'Status']],
-                    body: stockItems,
+                    body: lowStockItems,
                     headStyles: { 
-                        fillColor: [16, 185, 129], // Emerald Green
+                        fillColor: [220, 38, 38], // Red
                         textColor: [255, 255, 255],
                         fontStyle: 'bold'
                     },
-                    alternateRowStyles: { fillColor: [248, 250, 252] },
+                    alternateRowStyles: { fillColor: [254, 242, 242] },
                     styles: { fontSize: 10, cellPadding: 3.5 }
                 });
 
-                doc.save(`DentalCare_FullStockReport_${new Date().toISOString().slice(0, 10)}.pdf`);
+                doc.save(`DentalCare_LowStock_${new Date().toISOString().slice(0, 10)}.pdf`);
             }).catch((err) => {
                 console.error("Error generating PDF:", err);
                 alert("Failed to export PDF: " + err.message);
             });
         };
 
-        // 2. "Current Stock PDF" (Clean concise stock summary list)
+        // 2. "Current Stock PDF" (Clean complete stock summary)
         window.printCurrentStockPDF = function() {
             if (!window.jspdf) {
                 alert("PDF generation library is still loading. Please check your connection.");
