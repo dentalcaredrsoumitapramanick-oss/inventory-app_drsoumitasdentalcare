@@ -41,26 +41,26 @@
                 </div>
             </div>
 
-            <!-- Two Distinct PDF Action Buttons -->
+            <!-- Two Distinct PDF Buttons -->
             <div class="flex flex-wrap items-center justify-center sm:justify-end gap-3">
-                <!-- 1. Export Current Stock PDF (Emerald Green) -->
+                <!-- Button 1: Export Current Stock PDF (Full Table with Metadata & Status) -->
                 <button type="button" 
                         onclick="exportCurrentStockPDF()" 
                         class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Export Current Stock PDF
                 </button>
 
-                <!-- 2. Export Low Stock PDF (Crimson Red) -->
+                <!-- Button 2: Current Stock PDF (Quick View / Print Slip) -->
                 <button type="button" 
-                        onclick="exportLowStockPDF()" 
-                        class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        onclick="printCurrentStockPDF()" 
+                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Export Low Stock PDF
+                    Current Stock PDF
                 </button>
             </div>
         </header>
@@ -316,7 +316,7 @@
             }
         };
 
-        // 1. Export Current Stock PDF (All items with status badge)
+        // 1. "Export Current Stock PDF" (Full comprehensive report with thresholds & status)
         window.exportCurrentStockPDF = function() {
             if (!window.jspdf) {
                 alert("PDF generation library is still loading. Please check your connection.");
@@ -327,13 +327,13 @@
             const doc = new jsPDF();
 
             db.collection('inventory').get().then((snapshot) => {
-                const currentStockItems = [];
+                const stockItems = [];
 
                 snapshot.forEach((docItem) => {
                     const data = docItem.data();
                     const isLow = (data.qty ?? 0) <= (data.threshold ?? 0);
 
-                    currentStockItems.push([
+                    stockItems.push([
                         data.name || "N/A",
                         (data.qty ?? 0).toString(),
                         (data.threshold ?? 0).toString(),
@@ -341,12 +341,11 @@
                     ]);
                 });
 
-                if (currentStockItems.length === 0) {
+                if (stockItems.length === 0) {
                     alert("No inventory items found to export.");
                     return;
                 }
 
-                // Title & Subheading
                 doc.setFontSize(16);
                 doc.setTextColor(33, 37, 41);
                 doc.text("Dr. Soumita's Dental Care", 14, 16);
@@ -358,13 +357,12 @@
                 doc.setFontSize(9);
                 doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 29);
 
-                // Emerald Green Styled Table
                 doc.autoTable({
                     startY: 34,
                     head: [['Item Name', 'Current Stock', 'Min Alert Level', 'Status']],
-                    body: currentStockItems,
+                    body: stockItems,
                     headStyles: { 
-                        fillColor: [16, 185, 129], // Emerald green
+                        fillColor: [16, 185, 129], // Emerald Green
                         textColor: [255, 255, 255],
                         fontStyle: 'bold'
                     },
@@ -372,15 +370,15 @@
                     styles: { fontSize: 10, cellPadding: 3.5 }
                 });
 
-                doc.save(`DentalCare_CurrentStock_${new Date().toISOString().slice(0, 10)}.pdf`);
+                doc.save(`DentalCare_FullStockReport_${new Date().toISOString().slice(0, 10)}.pdf`);
             }).catch((err) => {
                 console.error("Error generating PDF:", err);
                 alert("Failed to export PDF: " + err.message);
             });
         };
 
-        // 2. Export Low Stock PDF (Only critical items requiring restock)
-        window.exportLowStockPDF = function() {
+        // 2. "Current Stock PDF" (Clean concise stock summary list)
+        window.printCurrentStockPDF = function() {
             if (!window.jspdf) {
                 alert("PDF generation library is still loading. Please check your connection.");
                 return;
@@ -390,52 +388,46 @@
             const doc = new jsPDF();
 
             db.collection('inventory').get().then((snapshot) => {
-                const lowStockItems = [];
+                const summaryItems = [];
 
                 snapshot.forEach((docItem) => {
                     const data = docItem.data();
-                    if (data.qty <= data.threshold) {
-                        lowStockItems.push([
-                            data.name || "N/A",
-                            (data.qty ?? 0).toString(),
-                            (data.threshold ?? 0).toString(),
-                            'Restock Required'
-                        ]);
-                    }
+                    summaryItems.push([
+                        data.name || "N/A",
+                        (data.qty ?? 0).toString()
+                    ]);
                 });
 
-                if (lowStockItems.length === 0) {
-                    alert("All materials are currently above alert thresholds. No low stock items to export!");
+                if (summaryItems.length === 0) {
+                    alert("No inventory items found to export.");
                     return;
                 }
 
-                // Title & Subheading
                 doc.setFontSize(16);
                 doc.setTextColor(33, 37, 41);
                 doc.text("Dr. Soumita's Dental Care", 14, 16);
                 
                 doc.setFontSize(11);
-                doc.setTextColor(100, 116, 139);
-                doc.text("Emergency Low Stock & Restock Report", 14, 23);
+                doc.setTextColor(71, 85, 105);
+                doc.text("Current Stock Summary List", 14, 23);
                 
                 doc.setFontSize(9);
-                doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 29);
+                doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 29);
 
-                // Crimson Red Styled Table
                 doc.autoTable({
                     startY: 34,
-                    head: [['Item Name', 'Current Stock', 'Min Alert Level', 'Status']],
-                    body: lowStockItems,
+                    head: [['Item Name', 'Available Quantity']],
+                    body: summaryItems,
                     headStyles: { 
-                        fillColor: [220, 38, 38], // Red
+                        fillColor: [37, 99, 235], // Blue
                         textColor: [255, 255, 255],
                         fontStyle: 'bold'
                     },
-                    alternateRowStyles: { fillColor: [254, 242, 242] },
+                    alternateRowStyles: { fillColor: [241, 245, 249] },
                     styles: { fontSize: 10, cellPadding: 3.5 }
                 });
 
-                doc.save(`DentalCare_LowStock_${new Date().toISOString().slice(0, 10)}.pdf`);
+                doc.save(`DentalCare_CurrentStock_${new Date().toISOString().slice(0, 10)}.pdf`);
             }).catch((err) => {
                 console.error("Error generating PDF:", err);
                 alert("Failed to export PDF: " + err.message);
