@@ -33,6 +33,7 @@
                 <tr class="bg-gray-200">
                     <th class="border p-2 text-left">Item Name</th>
                     <th class="border p-2 text-left">Current Stock</th>
+                    <th class="border p-2 text-left">Min. Level</th>
                     <th class="border p-2 text-center">Action</th>
                 </tr>
             </thead>
@@ -107,9 +108,11 @@
                         <td class="border p-2">
                             ${data.qty} ${isLow ? '<span class="text-red-600 font-bold ml-2">⚠️ কম স্টক!</span>' : ''}
                         </td>
+                        <td class="border p-2">${data.threshold}</td>
                         <td class="border p-2 text-center whitespace-nowrap">
                             <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-1 font-bold">-</button>
                             <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2 font-bold">+</button>
+                            <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded mr-1 font-bold" title="Edit Min Quantity">✏️</button>
                             <button onclick="deleteItem('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded font-bold" title="Delete Item">🗑️</button>
                         </td>
                     `;
@@ -129,6 +132,26 @@
                 } catch (err) {
                     console.error("Error updating quantity:", err);
                 }
+            }
+        }
+
+        // Modify Minimum Quantity (Threshold) in Firestore
+        async function updateThreshold(id, name, currentThreshold) {
+            const newThresholdInput = prompt(`Enter new Alert Level (Min. Quantity) for "${name}":`, currentThreshold);
+            if (newThresholdInput === null) return;
+
+            const newThreshold = parseInt(newThresholdInput, 10);
+            if (isNaN(newThreshold) || newThreshold < 0) {
+                alert("Please enter a valid positive number.");
+                return;
+            }
+
+            try {
+                await db.collection('inventory').doc(id).update({ threshold: newThreshold });
+                alertedItems.delete(id);
+            } catch (err) {
+                console.error("Error updating threshold:", err);
+                alert("Failed to update threshold: " + err.message);
             }
         }
 
