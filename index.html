@@ -45,7 +45,8 @@
             <div class="flex flex-wrap items-center justify-center sm:justify-end gap-3">
                 <!-- Button 1: Export Current Stock PDF (Full Table with Metadata & Status) -->
                 <button type="button" 
-                        onclick="exportCurrentStockPDF()" 
+                        onclick="printLowStockPDF()" 
+                        title="Low Stock PDF List"
                         class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg"
                         class="w-5 h-5 transition-transform group-hover:-translate-y-0.5"
@@ -55,12 +56,13 @@
                             stroke-linejoin="round"
                             d="M12 3v12m0 0l-4-4m4 4l4-4M5 17v3a1 1 0 001 1h12a1 1 0 001-1v-3"/>
                     </svg>
-                    Export Current Stock PDF
+                    Export Low Stock PDF
                 </button>
 
                 <!-- Button 2: Current Stock PDF (Quick View / Print Slip) -->
                 <button type="button" 
                         onclick="printCurrentStockPDF()" 
+                        title="Current Stock PDF List"
                         class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg"
                         class="w-5 h-5 transition-transform group-hover:-translate-y-0.5"
@@ -327,7 +329,7 @@
         };
 
         // 1. "Export Current Stock PDF" (Full comprehensive report with thresholds & status)
-        window.exportCurrentStockPDF = function() {
+        window.exportprintLowStockPDF = function() {
             if (!window.jspdf) {
                 alert("PDF generation library is still loading. Please check your connection.");
                 return;
