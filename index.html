@@ -249,14 +249,16 @@
                                 <!-- Decrease Button (-) -->
                                 <button type="button"
                                         onclick="updateQty('${doc.id}', ${currentQty}, -1)" 
-                                        class="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center justify-center transition shadow-xs focus:outline-none" 
+                                        style="background-color: #f59e0b; width: 36px; height: 36px; min-width: 36px;"
+                                        class="rounded-xl text-white font-black text-xl flex items-center justify-center transition-all duration-150 hover:opacity-90 active:scale-95 shadow-sm focus:outline-none select-none cursor-pointer" 
                                         title="Decrease Stock">
                                     -
                                 </button>
                                 <!-- Increase Button (+) -->
                                 <button type="button"
                                         onclick="updateQty('${doc.id}', ${currentQty}, 1)" 
-                                        class="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold flex items-center justify-center transition shadow-xs focus:outline-none" 
+                                        style="background-color: #10b981; width: 36px; height: 36px; min-width: 36px;"
+                                        class="rounded-xl text-white font-black text-xl flex items-center justify-center transition-all duration-150 hover:opacity-90 active:scale-95 shadow-sm focus:outline-none select-none cursor-pointer" 
                                         title="Increase Stock">
                                     +
                                 </button>
