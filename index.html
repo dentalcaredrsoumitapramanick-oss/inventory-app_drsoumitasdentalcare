@@ -132,14 +132,6 @@
                             <th class="py-3 px-6">Min. Threshold</th>
                             <th class="py-3 px-6 text-center">Actions</th>
                         </tr>
-                         </td>
-                        <td class="border p-2">${data.threshold}</td>
-                        <td class="border p-2 text-center whitespace-nowrap">
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-1 font-bold">-</button>
-                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2 font-bold">+</button>
-                            <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded mr-1 font-bold" title="Edit Min Quantity">✏️</button>
-                            <button onclick="deleteItem('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded font-bold" title="Delete Item">🗑️</button>
-                        </td>
                     </thead>
                     <tbody id="inventoryList" class="divide-y divide-gray-100 text-sm">
                         <tr>
