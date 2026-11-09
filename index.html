@@ -28,13 +28,13 @@
             <input type="text" id="itemName" placeholder="Item Name" class="border p-2 rounded" required>
             <input type="number" id="itemQty" placeholder="Quantity" class="border p-2 rounded" required>
             <input type="number" id="itemThreshold" placeholder="Min. Quantity (Alert Level)" class="border p-2 rounded" required>
-            <button type="submit" class="col-span-1 md:col-span-3 bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">Save</button>
+            <button type="submit" id="saveBtn" class="col-span-1 md:col-span-3 bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">Save</button>
         </form>
 
         <!-- Top Actions -->
         <div class="flex justify-between items-center mb-3">
             <h2 class="text-lg font-bold text-gray-700">Inventory Items</h2>
-            <button onclick="exportLowStockPDF()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded shadow transition">
+            <button type="button" id="pdfBtn" onclick="exportLowStockPDF()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded shadow transition">
                 📄 Export Low Stock PDF
             </button>
         </div>
@@ -58,4 +58,206 @@
         const firebaseConfig = {
             apiKey: "AIzaSyC1zQBE_wl5RQRQzbTDxMYpjuYOXGF520E",
             authDomain: "dental-care-8094e.firebaseapp.com",
-            databaseURL
+            databaseURL: "https://dental-care-8094e-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "dental-care-8094e",
+            storageBucket: "dental-care-8094e.firebasestorage.app",
+            messagingSenderId: "327731999527",
+            appId: "1:327731999527:web:465f2abd6aa0f84534ef02",
+            measurementId: "G-LE80ZHXSCL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. EmailJS Credentials
+        const EMAILJS_PUBLIC_KEY = "J_HmRzqV_3_Xu1vM7";
+        const EMAILJS_SERVICE_ID = "service_az6xx4a";
+        const EMAILJS_TEMPLATE_ID = "template_l5k8fv7";
+        const RECIPIENT_EMAIL = "dentalcaredrsoumitapramanick@gmail.com";
+
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        const alertedItems = new Set();
+
+        // Form Submit: Add new item to Firestore
+        document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            const name = document.getElementById('itemName').value.trim();
+            const qty = parseInt(document.getElementById('itemQty').value, 10);
+            const threshold = parseInt(document.getElementById('itemThreshold').value, 10);
+
+            try {
+                await db.collection('inventory').add({ name, qty, threshold });
+                document.getElementById('inventoryForm').reset();
+            } catch (err) {
+                console.error("Error adding item:", err);
+                alert("Failed to save: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save";
+            }
+        });
+
+        // Load Inventory and Listen for Real-Time Updates
+        function loadInventory() {
+            const list = document.getElementById('inventoryList');
+            
+            db.collection('inventory').onSnapshot((snapshot) => {
+                list.innerHTML = '';
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const isLow = data.qty <= data.threshold;
+
+                    if (isLow) {
+                        if (!alertedItems.has(doc.id)) {
+                            sendLowStockEmail(data.name, data.qty);
+                            alertedItems.add(doc.id);
+                        }
+                    } else {
+                        alertedItems.delete(doc.id);
+                    }
+
+                    const row = document.createElement('tr');
+                    row.className = isLow ? 'bg-red-100' : '';
+                    row.innerHTML = `
+                        <td class="border p-2 font-medium">${data.name}</td>
+                        <td class="border p-2">
+                            ${data.qty} ${isLow ? '<span class="text-red-600 font-bold ml-2">⚠️ কম স্টক!</span>' : ''}
+                        </td>
+                        <td class="border p-2">${data.threshold}</td>
+                        <td class="border p-2 text-center whitespace-nowrap">
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, -1)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded mr-1 font-bold">-</button>
+                            <button onclick="updateQty('${doc.id}', ${data.qty}, 1)" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2 font-bold">+</button>
+                            <button onclick="updateThreshold('${doc.id}', '${data.name}', ${data.threshold})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded mr-1 font-bold" title="Edit Min Quantity">✏️</button>
+                            <button onclick="deleteItem('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded font-bold" title="Delete Item">🗑️</button>
+                        </td>
+                    `;
+                    list.appendChild(row);
+                });
+            }, (error) => {
+                console.error("Error loading inventory:", error);
+            });
+        }
+
+        // Update item quantity
+        window.updateQty = async function(id, currentQty, change) {
+            const newQty = currentQty + change;
+            if (newQty >= 0) {
+                try {
+                    await db.collection('inventory').doc(id).update({ qty: newQty });
+                } catch (err) {
+                    console.error("Error updating quantity:", err);
+                }
+            }
+        };
+
+        // Modify Minimum Quantity (Threshold)
+        window.updateThreshold = async function(id, name, currentThreshold) {
+            const newThresholdInput = prompt(`Enter new Alert Level (Min. Quantity) for "${name}":`, currentThreshold);
+            if (newThresholdInput === null) return;
+
+            const newThreshold = parseInt(newThresholdInput, 10);
+            if (isNaN(newThreshold) || newThreshold < 0) {
+                alert("Please enter a valid positive number.");
+                return;
+            }
+
+            try {
+                await db.collection('inventory').doc(id).update({ threshold: newThreshold });
+                alertedItems.delete(id);
+            } catch (err) {
+                console.error("Error updating threshold:", err);
+                alert("Failed to update threshold: " + err.message);
+            }
+        };
+
+        // Delete item
+        window.deleteItem = async function(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"?`)) {
+                try {
+                    await db.collection('inventory').doc(id).delete();
+                    alertedItems.delete(id);
+                } catch (err) {
+                    console.error("Error deleting item:", err);
+                    alert("Failed to delete item: " + err.message);
+                }
+            }
+        };
+
+        // Export Low Stock Items as PDF (Bound to window to guarantee availability)
+        window.exportLowStockPDF = function() {
+            if (!window.jspdf) {
+                alert("jsPDF library is still loading or failed to load. Please check your internet connection.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            db.collection('inventory').get().then((snapshot) => {
+                const lowStockItems = [];
+
+                snapshot.forEach((docItem) => {
+                    const data = docItem.data();
+                    if (data.qty <= data.threshold) {
+                        lowStockItems.push([
+                            data.name || "N/A",
+                            (data.qty ?? 0).toString(),
+                            (data.threshold ?? 0).toString(),
+                            'Restock Required'
+                        ]);
+                    }
+                });
+
+                if (lowStockItems.length === 0) {
+                    alert("No low stock materials found at this time.");
+                    return;
+                }
+
+                doc.setFontSize(16);
+                doc.text("Dr. Soumita's Dental Care", 14, 15);
+                doc.setFontSize(12);
+                doc.text("Low Stock Materials Report", 14, 22);
+                doc.setFontSize(9);
+                doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+                doc.autoTable({
+                    startY: 32,
+                    head: [['Item Name', 'Current Stock', 'Min Level', 'Status']],
+                    body: lowStockItems,
+                    headStyles: { fillColor: [220, 38, 38] },
+                    styles: { fontSize: 10, cellPadding: 3 }
+                });
+
+                doc.save(`Low_Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+            }).catch((err) => {
+                console.error("Error generating PDF:", err);
+                alert("Failed to export PDF: " + err.message);
+            });
+        };
+
+        // Send Low Stock Email Alert via EmailJS
+        function sendLowStockEmail(itemName, currentQty) {
+            const templateParams = {
+                to_email: RECIPIENT_EMAIL,
+                item_name: itemName,
+                current_qty: currentQty
+            };
+
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
+                .then(function(response) {
+                    console.log('Low stock alert sent successfully:', response.status, response.text);
+                })
+                .catch(function(error) {
+                    console.error('Failed to send low stock alert:', error);
+                });
+        }
+
+        window.onload = loadInventory;
+    </script>
+</body>
+</html>
