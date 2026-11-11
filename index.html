@@ -572,5 +572,26 @@
                 });
         }
     </script>
+    let idleTimer;
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    auth.signOut().then(() => {
+      alert("Session expired due to inactivity.");
+    });
+  }, IDLE_TIMEOUT_MS);
+}
+
+// Listen for user activity
+window.onload = () => {
+  loadInventory();
+  ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+    document.addEventListener(event, resetIdleTimer, true);
+  });
+  resetIdleTimer();
+};
+
 </body>
 </html>
