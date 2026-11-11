@@ -215,12 +215,14 @@
                 loginView.classList.add('hidden');
                 dashboardView.classList.remove('hidden');
                 loadInventory();
+                resetIdleTimer();
             } else {
                 if (unsubscribeSnapshot) {
                     unsubscribeSnapshot();
                 }
                 dashboardView.classList.add('hidden');
                 loginView.classList.remove('hidden');
+                clearTimeout(idleTimer);
             }
         });
 
@@ -251,6 +253,7 @@
         // Logout Handler
         window.handleLogout = async function() {
             try {
+                clearTimeout(idleTimer);
                 await auth.signOut();
             } catch (err) {
                 alert("Sign-out failed: " + err.message);
@@ -483,9 +486,9 @@
                     head: [['Item Name', 'Current Stock', 'Min Alert Level', 'Status']],
                     body: lowStockItems,
                     headStyles: { 
-                        fillColor: [220, 38, 38],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold'
+                        fillColor: [220, 38, 38], 
+                        textColor: [255, 255, 255], 
+                        fontStyle: 'bold' 
                     },
                     alternateRowStyles: { fillColor: [254, 242, 242] },
                     styles: { fontSize: 10, cellPadding: 3.5 }
@@ -540,9 +543,9 @@
                     head: [['Item Name', 'Available Quantity']],
                     body: summaryItems,
                     headStyles: { 
-                        fillColor: [37, 99, 235],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold'
+                        fillColor: [37, 99, 235], 
+                        textColor: [255, 255, 255], 
+                        fontStyle: 'bold' 
                     },
                     alternateRowStyles: { fillColor: [241, 245, 249] },
                     styles: { fontSize: 10, cellPadding: 3.5 }
@@ -571,6 +574,30 @@
                     console.error('Failed to send low stock alert:', error);
                 });
         }
+
+        // --- Auto Idle Session Timeout ---
+        let idleTimer = null;
+        const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 Minutes
+
+        function resetIdleTimer() {
+            clearTimeout(idleTimer);
+            if (!auth.currentUser) return;
+
+            idleTimer = setTimeout(() => {
+                if (auth.currentUser) {
+                    auth.signOut().then(() => {
+                        alert("Session expired due to inactivity. Please log in again.");
+                    }).catch((error) => {
+                        console.error("Error during auto-signout:", error);
+                    });
+                }
+            }, IDLE_TIMEOUT_MS);
+        }
+
+        // Event listeners to track user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach((event) => {
+            document.addEventListener(event, resetIdleTimer, true);
+        });
     </script>
 </body>
 </html>
